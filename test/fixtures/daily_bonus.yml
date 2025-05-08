@@ -1,0 +1,11 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  user: one
+  bonus_day: 1
+  last_collected_at: 2025-05-07 17:38:18
+
+two:
+  user: two
+  bonus_day: 1
+  last_collected_at: 2025-05-07 17:38:18

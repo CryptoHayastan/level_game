@@ -1,0 +1,21 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  telegram_id: 
+  username: MyString
+  first_name: MyString
+  last_name: MyString
+  role: MyString
+  step: MyString
+  ban: false
+  balance: 1
+
+two:
+  telegram_id: 
+  username: MyString
+  first_name: MyString
+  last_name: MyString
+  role: MyString
+  step: MyString
+  ban: false
+  balance: 1
