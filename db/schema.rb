@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_05_07_143128) do
+ActiveRecord::Schema[8.0].define(version: 2025_05_07_133818) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -23,15 +23,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_07_143128) do
     t.index ["user_id"], name: "index_daily_bonus_on_user_id"
   end
 
-  create_table "referrals", force: :cascade do |t|
-    t.bigint "referrer_id", null: false
-    t.bigint "referral_id", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["referral_id"], name: "index_referrals_on_referral_id"
-    t.index ["referrer_id"], name: "index_referrals_on_referrer_id"
-  end
-
   create_table "users", force: :cascade do |t|
     t.bigint "telegram_id"
     t.string "username"
@@ -42,11 +33,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_07_143128) do
     t.boolean "ban"
     t.integer "balance"
     t.string "referral_link"
+    t.boolean "parent_access", default: true
+    t.string "ancestry"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
   end
 
   add_foreign_key "daily_bonus", "users"
-  add_foreign_key "referrals", "users", column: "referral_id"
-  add_foreign_key "referrals", "users", column: "referrer_id"
 end

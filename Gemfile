@@ -65,3 +65,4 @@ end
 gem "dotenv"
 gem 'telegram-bot-ruby'
 gem 'rufus-scheduler'
+gem 'ancestry'
