@@ -103,13 +103,69 @@ def collect_daily_bonus(user, bot, telegram_id)
   end
 end
 
+def steps(user, update, bot)
+  message = update
+  case user.step
+  when 'awaiting_username_for_shop'
+    username = message.text.delete_prefix('@').strip
+    target_user = User.find_by(username: username)
+
+    if target_user
+      # Создаём магазин сразу без запроса названия
+      shop = Shop.create!(
+        name: safe_telegram_name(target_user),
+        link: target_user.username,
+        user_id: target_user.id,
+        online: false
+      )
+      target_user.update!(role: 'shop')
+
+      bot.api.send_message(
+        chat_id: user.telegram_id,
+        text: "✅ Магазин «#{shop.name}» создан и привязан к @#{target_user.username}"
+      )
+    else
+      bot.api.send_message(chat_id: user.telegram_id, text: "❌ Пользователь с username @#{username} не найден.")
+    end
+
+    user.update(step: nil)
+  end
+end
+
+def generate_promo_code
+  random_part = SecureRandom.alphanumeric(8).upcase
+  "#{id}_#{random_part}"
+end
+
 Telegram::Bot::Client.run(TOKEN) do |bot|
   puts "Бот запущен..."
+
+  scheduler = Rufus::Scheduler.new
+
+  scheduler.every '60m' do
+    Shop.where(online: true).find_each do |shop|
+      if shop.online_since && shop.online_since < 60.minutes.ago
+        shop.update(online: false)
+
+        # Уведомим владельца
+        if shop.user&.telegram_id
+          bot.api.send_message(
+            chat_id: shop.user.telegram_id,
+            text: "🔴 Ваш магазин «#{shop.name}» был автоматически отключён через 60 минут."
+          )
+        end
+      end
+    end
+  end
 
 
   bot.listen do |update|
     begin
       user = find_or_update_user(update)
+
+      if user&.role == 'superadmin'
+        steps(user, update, bot)
+      end
   
       case update
       when Telegram::Bot::Types::Message
@@ -119,6 +175,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
         when '/start'
           # Отправляем приветственное сообщение пользователю
           bot.api.send_message(chat_id: user.telegram_id, text: "Բարև #{safe_telegram_name(user)}! Բարի գալուստ բոտ։")
+
         when /^\/start (\d+)$/
           referrer_telegram_id = $1.to_i
           puts "Реферал ID: #{referrer_telegram_id}"
@@ -154,7 +211,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
             Роль: #{user.role}
             🔗 Ваша ссылка для приглашений: #{user.referral_link}
             👥 Рефералов: #{referrals_count}
-            
+
             📅 Бонус: День #{bonus_day} из 10
             #{progress}
           TEXT
@@ -169,6 +226,71 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
             text: user_info,
             reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: buttons)
           )
+
+        when '/my_shop'
+          if user.role == 'shop'
+            shop = Shop.find_by(user_id: user.id)
+
+            if shop
+              shop_info = <<~TEXT
+                Магазин: #{shop.name}
+                Link: #{shop.link}
+                Статус: #{shop.online ? '🟢 Онлайн' : '🔴 Оффлайн'}
+                Города: #{shop.cities.map(&:name).join(', ')}
+              TEXT
+
+              toggle_button = Telegram::Bot::Types::InlineKeyboardButton.new(
+                text: shop.online ? '🔴 Отключить онлайн' : '🟢 Включить онлайн',
+                callback_data: "toggle_online_#{shop.id}"
+              )
+
+              bot.api.send_message(
+                chat_id: user.telegram_id,
+                text: shop_info,
+                reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(
+                  inline_keyboard: [
+                    [toggle_button],
+                    [Telegram::Bot::Types::InlineKeyboardButton.new(text: '📍 Управлять городами', callback_data: "edit_cities_#{shop.id}")]
+                  ]
+                )
+              )
+            end
+          end
+
+        when '/kap'
+          cities = City.all
+
+          city_buttons = cities.map do |city|
+
+            Telegram::Bot::Types::InlineKeyboardButton.new(
+              text: city.name,
+              callback_data: "city_#{city.id}"
+            )
+          end
+          city_buttons = city_buttons.each_slice(2).to_a
+          city_buttons << [Telegram::Bot::Types::InlineKeyboardButton.new(text: "Назад", callback_data: "back_to_main_menu")]
+          
+          bot.api.send_message(
+            chat_id: CHAT_ID,
+            text: "Выберите город:",
+            reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: city_buttons)
+          )
+
+        when '/admin'
+          if user.role == 'superadmin'
+            kb = [
+              [Telegram::Bot::Types::InlineKeyboardButton.new(text: '📋 Все магазины', callback_data: 'list_shops')],
+              [Telegram::Bot::Types::InlineKeyboardButton.new(text: '➕ Добавить магазин', callback_data: 'add_shop')]
+            ]
+
+            markup = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: kb)
+            bot.api.send_message(chat_id: user.telegram_id, text: "🔧 Панель администратора", reply_markup: markup)
+          end
+
+        when '/cancel'
+          user.update(step: nil)
+          bot.api.send_message(chat_id: user.telegram_id, text: "🚫 Действие отменено.")
+
         end
   
       when Telegram::Bot::Types::CallbackQuery
@@ -178,6 +300,65 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
         when /^daily_bonus_/
           telegram_id = data.split('_').last.to_i
           collect_daily_bonus(user, bot, telegram_id)
+
+        when /^city_/
+          city_id = data.split('_').last.to_i
+          city = City.find_by(id: city_id)
+
+        when /^delete_shop_(\d+)$/
+          shop_id = $1.to_i
+          shop = Shop.find_by(id: shop_id)
+
+          if shop
+            User.find(shop.user_id).update(role: 'user')
+            shop.destroy
+            bot.api.send_message(chat_id: update.from.id, text: "🗑 Магазин успешно удалён.")
+          else
+            bot.api.send_message(chat_id: update.from.id, text: "❌ Магазин не найден.")
+          end
+        when /^toggle_online_(\d+)$/
+          shop = Shop.find_by(id: $1.to_i)
+
+          if shop && shop.user_id == user.id
+            if shop.online
+              shop.update(online: false)
+              bot.api.send_message(chat_id: user.telegram_id, text: "🔴 Магазин отключён.")
+            else
+              shop.update(online: true, online_since: Time.current)  # online_since — новая колонка
+              bot.api.send_message(chat_id: user.telegram_id, text: "🟢 Магазин включён. Автоотключение через 60 минут.")
+            end
+          else
+            bot.api.send_message(chat_id: user.telegram_id, text: "❌ Магазин не найден.")
+          end
+
+        when 'add_shop'
+          user.update(step: 'awaiting_username_for_shop')
+          bot.api.send_message(chat_id: user.telegram_id, text: "👤 Введите username пользователя для нового магазина:\\n Или напишите /cancel чтобы отменить")
+          
+        when 'list_shops'
+          shops = Shop.all
+          if shops.any?
+            shops.each do |shop|
+              shop_text = "🏪 Магазин: *#{shop.name}*\n👤 Владелец: @#{User.find(shop.user_id)&.username || 'не найден'}"
+
+              kb = [
+                [
+                  Telegram::Bot::Types::InlineKeyboardButton.new(text: '🗑 Удалить', callback_data: "delete_shop_#{shop.id}")
+                ]
+              ]
+              markup = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: kb)
+
+              bot.api.send_message(
+                chat_id: update.from.id,
+                text: shop_text,
+                reply_markup: markup,
+                parse_mode: 'Markdown'
+              )
+            end
+          else
+            bot.api.send_message(chat_id: update.from.id, text: "❌ Магазины не найдены.")
+          end
+
         end
       else
         puts "❔ Неизвестный тип update: #{update.class}"
