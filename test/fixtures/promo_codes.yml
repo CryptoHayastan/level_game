@@ -1,0 +1,13 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  code: MyString
+  shop: one
+  product_type: 1
+  expires_at: 2025-05-15 13:44:42
+
+two:
+  code: MyString
+  shop: two
+  product_type: 1
+  expires_at: 2025-05-15 13:44:42

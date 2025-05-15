@@ -140,12 +140,63 @@ def steps(user, update, bot)
     user.update(step: nil)
 
     bot.api.send_message(chat_id: user.telegram_id, text: "✅ Город *#{city.name}* успешно добавлен в общий список.", parse_mode: 'Markdown')
+  when 'waiting_for_promo_code'
+    promo_code_text = message.text.strip
+    promo = PromoCode.find_by(code: promo_code_text)
+
+    if promo.nil?
+      bot.api.send_message(chat_id: user.telegram_id, text: "Промокод не найден. Попробуйте ещё раз или отправьте /start для выхода.")
+    elsif promo.expired?
+      bot.api.send_message(chat_id: user.telegram_id, text: "Промокод истёк.")
+    elsif PromoUsage.exists?(user_id: user.id, promo_code_id: promo.id)
+      bot.api.send_message(chat_id: user.telegram_id, text: "Вы уже использовали этот промокод.")
+    else
+      balance_to_add = promo.product_type == 1 ? 5000 : 12000
+      user.balance ||= 0
+      user.balance += balance_to_add
+      user.step = nil
+      user.save!
+
+      PromoUsage.create!(user_id: user.id, promo_code_id: promo.id)
+
+      bot.api.send_message(chat_id: user.telegram_id, text: "Промокод принят! Вам начислено #{balance_to_add} очков. Текущий баланс: #{user.balance}.")
+    end
   end
 end
 
-def generate_promo_code
-  random_part = SecureRandom.alphanumeric(8).upcase
-  "#{id}_#{random_part}"
+def create_promo_code(bot, user, shop_id, product_type_str)
+  puts "DEBUG: create_promo_code called with bot=#{bot}, user=#{user}, shop_id=#{shop_id}, product_type=#{product_type_str}"
+
+  # ОБЯЗАТЕЛЬНО передаём аргумент (например, 8)
+  promo_code = "#{shop_id}:#{product_type_str}:#{SecureRandom.hex(8)}"
+  begin
+    # Твой код, например:
+    expires_at = 2.hours.from_now
+    promo = PromoCode.create!(
+      code: promo_code,
+      shop_id: shop_id,
+      product_type: :product1,
+      expires_at: expires_at
+    )
+  rescue => e
+    puts "🔥 Ошибка: #{e.message}"
+    puts e.backtrace.join("\n")
+  end
+
+  if promo.persisted?
+    product_name = product_type_str == 1 ? "Продукт 1 (5000 очков)" : "Продукт 2 (12000 очков)"
+
+    bot.api.send_message(
+      chat_id: user.telegram_id,
+      text: "✅ Промокод создан:\n\n🔤 Код: `#{promo_code}`\n⏳ Действителен 2 часа.\n🎯 Тип: #{product_name}",
+      parse_mode: 'Markdown'
+    )
+  else
+    bot.api.send_message(
+      chat_id: user.telegram_id,
+      text: "❌ Ошибка при создании промокода."
+    )
+  end
 end
 
 Telegram::Bot::Client.run(TOKEN) do |bot|
@@ -184,26 +235,35 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
   
         case text
         when '/start'
-          # Отправляем приветственное сообщение пользователю
-          bot.api.send_message(chat_id: user.telegram_id, text: "Բարև #{safe_telegram_name(user)}! Բարի գալուստ բոտ։")
+          user.update(step: nil)
+          kb = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: [
+            [Telegram::Bot::Types::InlineKeyboardButton.new(text: 'Ввести промокод', callback_data: 'enter_promo')]
+          ])
+          bot.api.send_message(chat_id: user.telegram_id, text: 'Привет! Нажмите кнопку, чтобы ввести промокод.', reply_markup: kb)
 
         when /^\/start (\d+)$/
           referrer_telegram_id = $1.to_i
           puts "Реферал ID: #{referrer_telegram_id}"
-        
+
           referrer = User.find_by(telegram_id: referrer_telegram_id)
-        
-          # Проверка: пользователь не сам себе и ещё не был привязан
-          if user.telegram_id != referrer_telegram_id && user.ancestry.nil?
-            if referrer.present?
-              user.update(ancestry: referrer.id)
-              referrer.increment!(:balance, 1000)
-              puts "✅ Успешно назначен #{referrer.id} как родитель для #{user.id}"
-            else
-              puts "❌ Реферер не найден"
-            end
+
+          if referrer.nil?
+            bot.api.send_message(chat_id: user.telegram_id, text: "❌ Реферал с таким ID не найден.")
+          elsif referrer.id == user.id
+            bot.api.send_message(chat_id: user.telegram_id, text: "⚠️ Вы не можете пригласить сами себя!")
+          elsif user.ancestry.present?
+            bot.api.send_message(chat_id: user.telegram_id, text: "⚠️ Вы уже были привязаны к другому пользователю.")
           else
-            puts "⚠️ Пользователь не может быть сам себе или уже был привязан"
+            user.ancestry = referrer.id
+            if user.save
+              referrer.increment!(:balance, 1000)
+              bot.api.send_message(chat_id: user.telegram_id, text: "🎉 Реферал успешно засчитан!.")
+            else
+              # Тут сработала валидация модели, например "User cannot be a descendant of itself"
+              error_msg = user.errors.full_messages.join(", ")
+              puts "❌ Ошибка при сохранении: #{error_msg}"
+              bot.api.send_message(chat_id: user.telegram_id, text: "❌ Не удалось сохранить реферала: #{error_msg}")
+            end
           end
 
         when '/profile'
@@ -212,29 +272,30 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           days_left = 10 - bonus_day
   
           link = user.referral_link
-          progress = "Прогресс: " + ("🟩" * bonus_day) + ("⬜" * (10 - bonus_day))
+          progress = ("🟩" * bonus_day) + ("⬜" * (10 - bonus_day))
   
           referrals_count = user.children.count
+          purchases_count = user.promo_usages.count
 
-          user_info = <<~TEXT
+          user_info = <<~HTML
             Имя: #{safe_telegram_name(update.from)}
-            Баланс: #{user.balance}$
-            Роль: #{user.role}
-            🔗 Ваша ссылка для приглашений: #{user.referral_link}
+            Баланс: #{user.balance} LOM
+            🔗 Ваша ссылка для приглашений <code>https://t.me/Kukuruznik_profile_bot?start=#{user.telegram_id}</code>
             👥 Рефералов: #{referrals_count}
+            🛒 Покупок: #{purchases_count}
 
             📅 Бонус: День #{bonus_day} из 10
             #{progress}
-          TEXT
+          HTML
   
           buttons = [
-            [Telegram::Bot::Types::InlineKeyboardButton.new(text: "Пополнить баланс", callback_data: "deposit")],
             [Telegram::Bot::Types::InlineKeyboardButton.new(text: "Получить ежедневный бонус", callback_data: "daily_bonus_#{user.telegram_id}")]
           ]
   
           bot.api.send_message(
             chat_id: CHAT_ID,
             text: user_info,
+            parse_mode: "HTML",
             reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: buttons)
           )
 
@@ -261,7 +322,8 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
                 reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(
                   inline_keyboard: [
                     [toggle_button],
-                    [Telegram::Bot::Types::InlineKeyboardButton.new(text: '📍 Управлять городами', callback_data: "edit_cities_#{shop.id}")]
+                    [Telegram::Bot::Types::InlineKeyboardButton.new(text: '📍 Управлять городами', callback_data: "edit_cities_#{shop.id}")],
+                    [Telegram::Bot::Types::InlineKeyboardButton.new(text: '🎟 Создать промокод', callback_data: "create_promo_#{shop.id}")]
                   ]
                 )
               )
@@ -407,6 +469,35 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
               )
             )
           end
+        when /^create_promo_(\d+)$/
+          shop = Shop.find_by(id: $1)
+          if shop && shop.user_id == user.id
+            bot.api.send_message(
+              chat_id: user.telegram_id,
+              text: "🛍 Какой продукт?\nВыберите тип:",
+              reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(
+                inline_keyboard: [
+                  [
+                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "📦 Продукт 1 (5000 очков)", callback_data: "product1_#{shop.id}"),
+                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "🎁 Продукт 2 (12000 очков)", callback_data: "product2_#{shop.id}")
+                  ]
+                ]
+              )
+            )
+          end
+
+        when /^product1_\d+$/
+          shop_id = data.split('_').last.to_i
+          create_promo_code(bot, user, shop_id, 1)
+
+        when /^product2_\d+$/
+          shop_id = data.split('_').last.to_i
+          create_promo_code(bot, user, shop_id, 2)
+        when 'enter_promo'
+          user.update(step: 'waiting_for_promo_code')
+          bot.api.send_message(chat_id: user.telegram_id, text: 'Введите ваш промокод:')
+          bot.api.answer_callback_query(callback_query_id: update.id) # убираем часики у кнопки
+
         when 'add_city'
           user.update(step: 'awaiting_new_city_name')
           bot.api.send_message(chat_id: user.telegram_id, text: "Введите название нового города для общего списка:")

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_05_10_131720) do
+ActiveRecord::Schema[8.0].define(version: 2025_05_15_094542) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -36,6 +36,27 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_10_131720) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["user_id"], name: "index_daily_bonus_on_user_id"
+  end
+
+  create_table "promo_codes", force: :cascade do |t|
+    t.string "code"
+    t.bigint "shop_id", null: false
+    t.integer "product_type"
+    t.datetime "expires_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["code"], name: "index_promo_codes_on_code", unique: true
+    t.index ["shop_id"], name: "index_promo_codes_on_shop_id"
+  end
+
+  create_table "promo_usages", force: :cascade do |t|
+    t.bigint "promo_code_id", null: false
+    t.bigint "user_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["promo_code_id", "user_id"], name: "index_promo_usages_on_promo_code_id_and_user_id", unique: true
+    t.index ["promo_code_id"], name: "index_promo_usages_on_promo_code_id"
+    t.index ["user_id"], name: "index_promo_usages_on_user_id"
   end
 
   create_table "shops", force: :cascade do |t|
@@ -68,5 +89,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_10_131720) do
   add_foreign_key "city_shops", "cities"
   add_foreign_key "city_shops", "shops"
   add_foreign_key "daily_bonus", "users"
+  add_foreign_key "promo_codes", "shops"
+  add_foreign_key "promo_usages", "promo_codes"
+  add_foreign_key "promo_usages", "users"
   add_foreign_key "shops", "users"
 end
