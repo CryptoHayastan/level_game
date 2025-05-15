@@ -129,6 +129,17 @@ def steps(user, update, bot)
     end
 
     user.update(step: nil)
+   when 'awaiting_new_city_name'
+    city_name = message.text.strip
+    if city_name.empty?
+      bot.api.send_message(chat_id: user.telegram_id, text: "❌ Название города не может быть пустым. Пожалуйста, введите корректное название.")
+      return
+    end
+
+    city = City.find_or_create_by(name: city_name)
+    user.update(step: nil)
+
+    bot.api.send_message(chat_id: user.telegram_id, text: "✅ Город *#{city.name}* успешно добавлен в общий список.", parse_mode: 'Markdown')
   end
 end
 
@@ -163,7 +174,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
     begin
       user = find_or_update_user(update)
 
-      if user&.role == 'superadmin'
+      if user&.role == 'superadmin' || user&.role == 'shop'
         steps(user, update, bot)
       end
   
@@ -316,6 +327,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           else
             bot.api.send_message(chat_id: update.from.id, text: "❌ Магазин не найден.")
           end
+
         when /^toggle_online_(\d+)$/
           shop = Shop.find_by(id: $1.to_i)
 
@@ -330,6 +342,74 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           else
             bot.api.send_message(chat_id: user.telegram_id, text: "❌ Магазин не найден.")
           end
+
+        when /^edit_cities_(\d+)$/
+          shop = Shop.find_by(id: $1)
+
+          if shop && shop.user_id == user.id
+            all_cities = City.all
+            attached_ids = shop.city_ids
+
+            buttons = all_cities.map do |city|
+              attached = attached_ids.include?(city.id)
+              emoji = attached ? '✅' : '➕'
+              Telegram::Bot::Types::InlineKeyboardButton.new(
+                text: "#{emoji} #{city.name}",
+                callback_data: "toggle_city_#{shop.id}_#{city.id}"
+              )
+            end.each_slice(2).to_a
+
+            # ➕ Кнопка сверху
+            add_general_city_button = Telegram::Bot::Types::InlineKeyboardButton.new(
+              text: "➕ Добавить новый город (общий)",
+              callback_data: "add_city"
+            )
+
+            bot.api.edit_message_text(
+              chat_id: user.telegram_id,
+              message_id: update.message.message_id,
+              text: "Выберите города для магазина:",
+              reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(
+                inline_keyboard: [[add_general_city_button]] + buttons
+              )
+            )
+          end
+
+        when /^toggle_city_(\d+)_(\d+)$/
+          shop = Shop.find_by(id: $1)
+          city = City.find_by(id: $2)
+
+          if shop && city && shop.user_id == user.id
+            if shop.cities.exists?(city.id)
+              shop.cities.delete(city)
+            else
+              shop.cities << city
+            end
+
+            # Обновляем кнопки
+            all_cities = City.all
+            attached_ids = shop.city_ids
+
+            buttons = all_cities.map do |c|
+              attached = attached_ids.include?(c.id)
+              emoji = attached ? '✅' : '➕'
+              Telegram::Bot::Types::InlineKeyboardButton.new(
+                text: "#{emoji} #{c.name}",
+                callback_data: "toggle_city_#{shop.id}_#{c.id}"
+              )
+            end.each_slice(2).to_a
+
+            bot.api.edit_message_reply_markup(
+              chat_id: user.telegram_id,
+              message_id: update.message.message_id,
+              reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(
+                inline_keyboard: buttons
+              )
+            )
+          end
+        when 'add_city'
+          user.update(step: 'awaiting_new_city_name')
+          bot.api.send_message(chat_id: user.telegram_id, text: "Введите название нового города для общего списка:")
 
         when 'add_shop'
           user.update(step: 'awaiting_username_for_shop')
