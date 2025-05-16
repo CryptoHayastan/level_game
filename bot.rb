@@ -72,36 +72,67 @@ def safe_telegram_name(u)
   end
 end
 
-def collect_daily_bonus(user, bot, telegram_id)
-  if user.telegram_id == telegram_id
-    daily_bonus = user.daily_bonus || user.create_daily_bonus(bonus_day: 0)
+def collect_daily_bonus(user, bot, telegram_id, callback_query)
+  return unless user && user.telegram_id == telegram_id
 
-    now = Time.current
+  daily_bonus = user.daily_bonus || user.create_daily_bonus(bonus_day: 0)
+  now = Time.current
 
-    if daily_bonus.last_collected_at&.to_date == now.to_date
-      bot.api.send_message(chat_id: CHAT_ID, text: "📅 Вы уже собрали бонус сегодня. Возвращайтесь завтра!")
-      return
-    end
-
-    if daily_bonus.last_collected_at && daily_bonus.last_collected_at.to_date < now.to_date - 1
-      daily_bonus.bonus_day = 0 # сброс если день пропущен
-    end
-
-    daily_bonus.bonus_day += 1
-    daily_bonus.last_collected_at = now
-
-    reward = daily_bonus.bonus_day * 10
-    user.balance += reward
-
-    daily_bonus.save!
-    user.save!
-
-    if daily_bonus.bonus_day > 10
-      daily_bonus.bonus_day = 1
-    else
-      bot.api.send_message(chat_id: CHAT_ID, text: "✅ День #{daily_bonus.bonus_day} — вы получили #{reward} очков!")
-    end
+  if daily_bonus.last_collected_at&.to_date == now.to_date
+    bot.api.answer_callback_query(
+      callback_query_id: callback_query.id,
+      text: "📅 Вы уже собрали бонус сегодня. Возвращайтесь завтра!"
+    )
+    return
   end
+
+  if daily_bonus.last_collected_at && daily_bonus.last_collected_at.to_date < now.to_date - 1
+    daily_bonus.bonus_day = 0
+  end
+
+  daily_bonus.bonus_day += 1
+  daily_bonus.last_collected_at = now
+  reward = daily_bonus.bonus_day * 10
+
+  user.balance += reward
+  daily_bonus.save!
+  user.save!
+
+  bot.api.answer_callback_query(
+    callback_query_id: callback_query.id,
+    text: "✅ Бонус получен: +#{reward} очков"
+  )
+
+  # 🔁 Обновление профиля
+  bonus_day = daily_bonus.bonus_day > 10 ? 1 : daily_bonus.bonus_day
+  progress = ("🟩" * bonus_day) + ("⬜" * (10 - bonus_day))
+  referrals_count = user.children.count
+  purchases_count = user.promo_usages.count
+
+  user_info = <<~HTML
+    Имя: #{safe_telegram_name(callback_query.from)}
+    Баланс: #{user.balance} LOM
+    🔗 Ваша ссылка для приглашений <code>https://t.me/Kukuruznik_profile_bot?start=#{user.telegram_id}</code>
+    👥 Рефералов: #{referrals_count}
+    🛒 Покупок: #{purchases_count}
+
+    📅 Бонус: День #{bonus_day} из 10
+    #{progress}
+  HTML
+
+  buttons = [
+    [Telegram::Bot::Types::InlineKeyboardButton.new(
+      text: "Получить ежедневный бонус", callback_data: "daily_bonus_#{user.telegram_id}"
+    )]
+  ]
+
+  bot.api.edit_message_text(
+    chat_id: callback_query.message.chat.id,
+    message_id: callback_query.message.message_id,
+    text: user_info,
+    parse_mode: "HTML",
+    reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: buttons)
+  )
 end
 
 def steps(user, update, bot)
@@ -205,16 +236,16 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
 
   scheduler = Rufus::Scheduler.new
 
-  scheduler.every '60m' do
+  scheduler.every '30m' do
     Shop.where(online: true).find_each do |shop|
-      if shop.online_since && shop.online_since < 60.minutes.ago
+      if shop.online_since && shop.online_since < 30.minutes.ago
         shop.update(online: false)
 
         # Уведомим владельца
         if shop.user&.telegram_id
           bot.api.send_message(
             chat_id: shop.user.telegram_id,
-            text: "🔴 Ваш магазин «#{shop.name}» был автоматически отключён через 60 минут."
+            text: "🔴 Ваш магазин «#{shop.name}» был автоматически отключён через 30 минут."
           )
         end
       end
@@ -377,7 +408,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
         case data
         when /^daily_bonus_/
           telegram_id = data.split('_').last.to_i
-          collect_daily_bonus(user, bot, telegram_id)
+          collect_daily_bonus(user, bot, telegram_id, update)
 
         when /^city_/
           city_id = data.split('_').last.to_i
