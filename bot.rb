@@ -5,6 +5,7 @@ require 'rufus-scheduler'
 TOKEN = ENV['TELEGRAM_BOT_TOKEN']
 CHANNEL = '@KukuruznikTM'
 CHAT_ID = -1002291429008
+SUPERADMINS = User.where(role: 'superadmin')
 
 def find_or_update_user(update)
   return unless update.respond_to?(:from) && update.from
@@ -237,7 +238,8 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
         when '/start'
           user.update(step: nil)
           kb = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: [
-            [Telegram::Bot::Types::InlineKeyboardButton.new(text: 'Ввести промокод', callback_data: 'enter_promo')]
+            [Telegram::Bot::Types::InlineKeyboardButton.new(text: 'Ввести промокод', callback_data: 'enter_promo')],
+            [Telegram::Bot::Types::InlineKeyboardButton.new(text: 'Бонуси', callback_data: 'bonus')]
           ])
           bot.api.send_message(chat_id: user.telegram_id, text: 'Привет! Нажмите кнопку, чтобы ввести промокод.', reply_markup: kb)
 
@@ -363,7 +365,10 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
         when '/cancel'
           user.update(step: nil)
           bot.api.send_message(chat_id: user.telegram_id, text: "🚫 Действие отменено.")
-
+        else
+          if update.text.present? && !update.sticker && !update.animation && !update.photo && update.from.id == CHAT_ID
+            user.add_message_point!
+          end
         end
   
       when Telegram::Bot::Types::CallbackQuery
@@ -493,6 +498,154 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
         when /^product2_\d+$/
           shop_id = data.split('_').last.to_i
           create_promo_code(bot, user, shop_id, 2)
+        when /^bonus_(\d+)$/
+          discount = $1.to_i  # 50, 20 или 5
+
+          # Цены бонусов в очках
+          bonus_prices = {
+            50 => 200_000,
+            20 => 100_000,
+            5  => 500_000,
+            1 => 1_000_000
+          }
+
+          price = bonus_prices[discount]
+
+          if user.balance.to_i < price
+            bot.api.send_message(
+              chat_id: user.telegram_id,
+              text: "У вас недостаточно очков для покупки бонуса #{discount}% скидка. Нужно #{price}, у вас #{user.balance}."
+            )
+            next
+          end
+
+          # Списываем очки
+          user.balance -= price
+          user.step = 'waiting_admin_contact' # блокируем смену имени
+          user.save!
+
+          # Сообщение пользователю
+          user_message = <<~HTML
+            Спасибо за выбор бонуса: #{discount}% скидка! 🎉
+
+            С вашего баланса списано #{price} очков.
+
+            Пожалуйста, подождите, пока с вами свяжется администратор.
+            Не меняйте своё имя пользователя до этого момента.
+          HTML
+
+          bot.api.send_message(
+            chat_id: user.telegram_id,
+            text: user_message,
+            parse_mode: 'HTML'
+          )
+
+          # Собираем данные для суперадминов
+
+          referrals_count = user.children.count
+
+          purchases_info = PromoUsage.joins(:promo_code)
+                            .where(user_id: user.id)
+                            .group('promo_codes.shop_id')
+                            .count
+
+          shops_info = purchases_info.map do |shop_id, count|
+            shop = Shop.find_by(id: shop_id)
+            "#{shop&.name || 'Неизвестный магазин'}: #{count} покупок"
+          end.join("\n")
+
+          username_display = user.username ? "@#{user.username}" : nil
+          full_name_display = "#{user.first_name} #{user.last_name}".strip
+          display_name = username_display || full_name_display
+
+          admin_message = <<~TEXT
+            Пользователь выбрал бонус #{discount}% скидка (#{price} очков):
+
+            Имя пользователя: #{display_name}
+            Telegram ID: #{user.telegram_id}
+            Роль: #{user.role}
+            Баланс: #{user.balance}
+            Рефералов: #{referrals_count}
+            Покупки:
+            #{shops_info.presence || 'Покупок нет'}
+
+            Статус пользователя: #{user.step}
+          TEXT
+
+          buttons = Telegram::Bot::Types::InlineKeyboardMarkup.new(
+            inline_keyboard: [
+              [
+                Telegram::Bot::Types::InlineKeyboardButton.new(text: "Посмотреть рефералов", callback_data: "referrals_#{user.id}")
+              ]
+            ]
+          )
+
+          SUPERADMINS.find_each do |admin|
+            bot.api.send_message(
+              chat_id: admin.telegram_id,
+              text: admin_message,
+              reply_markup: buttons
+            )
+          end
+        when /^referrals_(\d+)$/
+          user_id = $1.to_i
+          target_user = User.find_by(id: user_id)
+          chat_id = update.callback_query.from.id
+
+          if target_user
+            referrals = target_user.children
+            puts "Рефералы: #{referrals.map(&:id).join(', ')}"
+
+            if referrals.any?
+              keyboard = referrals.map do |ref|
+                [
+                  Telegram::Bot::Types::InlineKeyboardButton.new(
+                    text: safe_telegram_name_html(ref),
+                    callback_data: "referral_profile:#{ref.id}"
+                  )
+                ]
+              end
+
+              bot.api.send_message(
+                chat_id: chat_id,
+                text: "Рефералы пользователя #{safe_telegram_name_html(target_user)}:",
+                reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: keyboard),
+                parse_mode: 'HTML'
+              )
+            else
+              bot.api.send_message(chat_id: chat_id, text: "У пользователя нет рефералов.")
+            end
+          else
+            bot.api.send_message(chat_id: chat_id, text: "Пользователь не найден.")
+          end
+
+        when /^referral_profile:(\d+)$/
+          ref_user = User.find_by(id: $1)
+          if ref_user && superadmin?(from.id)
+            referrals_count = User.where(ancestry: ref_user.telegram_id.to_s).count
+
+            shops_info = Shop.joins(:promo_codes => :promo_usages)
+                            .where(promo_usages: { user_id: ref_user.id })
+                            .distinct
+                            .map { |s| "- #{s.name}" }.join("\n")
+
+            profile = <<~TEXT
+              Имя пользователя: #{safe_telegram_name_html(ref_user)}
+              Telegram ID: #{ref_user.telegram_id}
+              Роль: #{ref_user.role}
+              Баланс: #{ref_user.balance}
+              Рефералов: #{referrals_count}
+              Покупки:
+              #{shops_info.presence || 'Покупок нет'}
+
+              Статус пользователя: #{ref_user.step}
+            TEXT
+
+            bot.api.send_message(chat_id: chat_id, text: profile, parse_mode: 'HTML')
+          else
+            bot.api.send_message(chat_id: chat_id, text: "Пользователь не найден или нет доступа.")
+          end
+
         when 'enter_promo'
           user.update(step: 'waiting_for_promo_code')
           bot.api.send_message(chat_id: user.telegram_id, text: 'Введите ваш промокод:')
@@ -529,7 +682,25 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           else
             bot.api.send_message(chat_id: update.from.id, text: "❌ Магазины не найдены.")
           end
+        when 'bonus'
+          user.update(step: 'bonus')
 
+          buttons = Telegram::Bot::Types::InlineKeyboardMarkup.new(
+            inline_keyboard: [
+              [
+                Telegram::Bot::Types::InlineKeyboardButton.new(text: '50% скидка', callback_data: 'bonus_50'),
+                Telegram::Bot::Types::InlineKeyboardButton.new(text: '20% скидка', callback_data: 'bonus_20'),
+                Telegram::Bot::Types::InlineKeyboardButton.new(text: '1', callback_data: 'bonus_1'),
+                Telegram::Bot::Types::InlineKeyboardButton.new(text: '0,5',  callback_data: 'bonus_5')
+              ]
+            ]
+          )
+
+          bot.api.send_message(
+            chat_id: update.from.id,
+            text: "Выберите тип бонуса:",
+            reply_markup: buttons
+          )
         end
       else
         puts "❔ Неизвестный тип update: #{update.class}"

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_05_15_094542) do
+ActiveRecord::Schema[8.0].define(version: 2025_05_16_090742) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -36,6 +36,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_15_094542) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["user_id"], name: "index_daily_bonus_on_user_id"
+  end
+
+  create_table "message_counts", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.integer "count"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_message_counts_on_user_id"
   end
 
   create_table "promo_codes", force: :cascade do |t|
@@ -89,6 +97,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_15_094542) do
   add_foreign_key "city_shops", "cities"
   add_foreign_key "city_shops", "shops"
   add_foreign_key "daily_bonus", "users"
+  add_foreign_key "message_counts", "users"
   add_foreign_key "promo_codes", "shops"
   add_foreign_key "promo_usages", "promo_codes"
   add_foreign_key "promo_usages", "users"
