@@ -366,7 +366,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           user.update(step: nil)
           bot.api.send_message(chat_id: user.telegram_id, text: "🚫 Действие отменено.")
         else
-          if update.text.present? && !update.sticker && !update.animation && !update.photo && update.from.id == CHAT_ID
+          if update.text.present? && !update.sticker && !update.animation && !update.photo && update.chat.id == CHAT_ID
             user.add_message_point!
           end
         end
