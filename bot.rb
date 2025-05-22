@@ -164,6 +164,57 @@ def steps(user, update, bot)
     end
 
     user.update(step: nil)
+   when 'awaiting_yerevan_name'
+    name = message.text.strip
+
+    if name.present?
+      City.create!(name: name, sub: true)
+      bot.api.send_message(
+        chat_id: user.telegram_id,
+        text: "✅ Տարածքը ավելացվել է: #{name}"
+      )
+    else
+      bot.api.send_message(
+        chat_id: user.telegram_id,
+        text: "⚠️ Անունը չի կարող լինել դատարկ։ Փորձիր նորից։"
+      )
+    end
+
+    user.update(step: nil)
+
+    shop = user.shop
+    yerevan_places = City.where(sub: true)
+    attached_ids = shop.city_ids
+
+    buttons = yerevan_places.map do |city|
+      attached = attached_ids.include?(city.id)
+      emoji = attached ? '✅' : '➕'
+      Telegram::Bot::Types::InlineKeyboardButton.new(
+        text: "#{emoji} #{city.name}",
+        callback_data: "toggle_city_#{shop.id}_#{city.id}"
+      )
+    end.each_slice(2).to_a
+
+    add_yerevan_place_button = Telegram::Bot::Types::InlineKeyboardButton.new(
+      text: "➕ Ավելացնել վայր Երևանում",
+      callback_data: "add_yerevan_place"
+    )
+
+    back_button = Telegram::Bot::Types::InlineKeyboardButton.new(
+      text: "🔙 Վերադառնալ",
+      callback_data: "edit_cities_#{shop.id}"
+    )
+
+    keyboard = [[add_yerevan_place_button]] + buttons + [[back_button]]
+
+    bot.api.send_message(
+      chat_id: user.telegram_id,
+      text: "📍 Ընտրիր Երևանի տարածքները:",
+      reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(
+        inline_keyboard: keyboard
+      )
+    )
+
    when 'awaiting_new_city_name'
     city_name = message.text.strip
     if city_name.empty?
@@ -175,6 +226,37 @@ def steps(user, update, bot)
     user.update(step: nil)
 
     bot.api.send_message(chat_id: user.telegram_id, text: "✅ Город *#{city.name}* успешно добавлен в общий список.", parse_mode: 'Markdown')
+
+    shop = user.shop
+    all_cities = City.where(sub: [false, nil])
+    attached_ids = shop.city_ids
+
+    buttons = all_cities.map do |city|
+      attached = attached_ids.include?(city.id)
+      emoji = attached ? '✅' : '➕'
+      Telegram::Bot::Types::InlineKeyboardButton.new(
+        text: "#{emoji} #{city.name}",
+        callback_data: "toggle_city_#{shop.id}_#{city.id}"
+      )
+    end.each_slice(2).to_a
+
+    add_general_city_button = Telegram::Bot::Types::InlineKeyboardButton.new(
+      text: "➕ Добавить новый город (общий)",
+      callback_data: "add_city"
+    )
+
+    yerevan_button = Telegram::Bot::Types::InlineKeyboardButton.new(
+      text: "🏙️ Երևան",
+      callback_data: "show_yerevan_subs"
+    )
+
+    bot.api.send_message(
+      chat_id: user.telegram_id,
+      text: "Выберите города для магазина:",
+      reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(
+        inline_keyboard: [[add_general_city_button], [yerevan_button]] + buttons
+      )
+    )
   when 'waiting_for_promo_code'
     if update && update.text
       promo_code_text = update.text.strip
@@ -228,9 +310,23 @@ def create_promo_code(bot, user, shop_id, product_type_str)
   if promo.persisted?
     product_name = product_type_str == 1 ? "0,5" : "1"
 
+    message = <<~TEXT
+      🔤 Կոդ՝ `#{promo_code}`
+      ⏳ Վավեր է՝ 2 ժամ
+      🎯 Տեսակ՝ #{product_name}
+
+      📥 Ինչպես օգտագործել․
+      1. Բացիր բոտը 👉 [@Kukuruznik_profile_bot](https://t.me/Kukuruznik_profile_bot)
+      2. Սեղմիր **«Start»** կամ ուղարկիր հրամանը `/start`
+      3. Մուտքագրիր քո կոդը՝ `#{promo_code}`
+      4. Ստացիր բոնուսներ կամ հատուկ առաջարկներ 🎁
+
+      ⏰ Ուշադրություն․ Կոդը հասանելի է միայն 2 ժամ։ Մի ուշացիր օգտագործել։
+    TEXT
+
     bot.api.send_message(
       chat_id: user.telegram_id,
-      text: "✅ Промокод создан:\n\n🔤 Код: `#{promo_code}`\n⏳ Действителен 2 часа.\n🎯 Тип: #{product_name}",
+      text: "#{message}",
       parse_mode: 'Markdown'
     )
   else
@@ -406,28 +502,29 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
             parse_mode: 'HTML'
           )
         when '/map'
-          cities = City.all
+          general_cities = City.where(sub: [false, nil])
+          yerevan_button = Telegram::Bot::Types::InlineKeyboardButton.new(
+            text: "🏙 Երևան",
+            callback_data: "yerevan_map"
+          )
 
-          if cities.any?
-            keyboard = cities.each_slice(2).map do |city_pair|
-              city_pair.map do |city|
-                Telegram::Bot::Types::InlineKeyboardButton.new(
-                  text: city.name,
-                  callback_data: "city_#{city.id}"
-                )
-              end
-            end
-
-            markup = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: keyboard)
-
-            bot.api.send_message(
-              chat_id: update.chat.id,
-              text: "🏙 Ընտրեք քաղաքը 👇",
-              reply_markup: markup
+          city_buttons = general_cities.map do |city|
+            Telegram::Bot::Types::InlineKeyboardButton.new(
+              text: city.name,
+              callback_data: "city_#{city.id}"
             )
-          else
-            bot.api.send_message(chat_id: update.chat.id, text: "Քաղաքներ չեն գտնվել։")
           end
+
+          # группируем по 2 в ряд
+          keyboard = [[yerevan_button]] + city_buttons.each_slice(2).to_a
+
+          markup = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: keyboard)
+
+          bot.api.send_message(
+            chat_id: update.chat.id,
+            text: "🏙 Ընտրեք քաղաքը 👇",
+            reply_markup: markup
+          )
 
         when '/top'
           top_users = User.order(score: :desc).limit(10)
@@ -455,6 +552,24 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
         when '/cancel'
           user.update(step: nil)
           bot.api.send_message(chat_id: user.telegram_id, text: "🚫 Действие отменено.")
+        when '/ban'
+          if update.reply_to_message
+            chat_id = update.chat.id
+
+            if user&.role == 'superadmin'
+              target_id = update.reply_to_message.from.id
+              begin
+                bot.api.banChatMember(chat_id: chat_id, user_id: target_id)
+                bot.api.send_message(chat_id: chat_id, text: "🚫 Օգտատերը արգելափակված է։")
+              rescue => e
+                bot.api.send_message(chat_id: chat_id, text: "❌ Օգտատիրոջը արգելափակել չհաջողվեց: #{e.update}")
+              end
+            else
+                bot.api.send_message(chat_id: chat_id, text: "❌ Դուք չունեք դրա համար իրավունքներ։")
+            end
+          else
+            bot.api.send_message(chat_id: update.chat.id, text: "⛔ Օգտագործեք այս հրամանը՝ ի պատասխան այն օգտատիրոջ հաղորդագրությանը, որին ցանկանում եք արգելափակել։")
+          end
         else
           if update.text.present? && !update.sticker && !update.animation && !update.photo && update.chat.id == CHAT_ID
             user.add_message_point!
@@ -494,11 +609,11 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
                       end
 
           buttons = [
-            [Telegram::Bot::Types::InlineKeyboardButton.new(text: "🔙 Վերադառնալ քաղաքներ", callback_data: "back_to_cities")]
+            [Telegram::Bot::Types::InlineKeyboardButton.new(text: "🔙 Վերադառնալ քաղաքներ", callback_data: "map")]
           ]
 
           bot.api.edit_message_text(
-            chat_id: update.message.chat.id,
+            chat_id: CHAT_ID,
             message_id: update.message.message_id,
             text: "🏙 <b>Քաղաք՝</b> #{city.name}\n\n#{shop_list}",
             parse_mode: 'HTML',
@@ -526,7 +641,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
               bot.api.send_message(chat_id: user.telegram_id, text: "🔴 Магазин отключён.")
             else
               shop.update(online: true, online_since: Time.current)  # online_since — новая колонка
-              bot.api.send_message(chat_id: user.telegram_id, text: "🟢 Магазин включён. Автоотключение через 60 минут.")
+              bot.api.send_message(chat_id: user.telegram_id, text: "🟢 Магазин включён. Автоотключение через 30 минут.")
             end
           else
             bot.api.send_message(chat_id: user.telegram_id, text: "❌ Магазин не найден.")
@@ -536,7 +651,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           shop = Shop.find_by(id: $1)
 
           if shop && shop.user_id == user.id
-            all_cities = City.all
+            all_cities = City.where(sub: [false, nil])
             attached_ids = shop.city_ids
 
             buttons = all_cities.map do |city|
@@ -554,12 +669,17 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
               callback_data: "add_city"
             )
 
+             yerevan_button = Telegram::Bot::Types::InlineKeyboardButton.new(
+              text: "🏙️ Երևան",
+              callback_data: "show_yerevan_subs"
+            )
+
             bot.api.edit_message_text(
               chat_id: user.telegram_id,
               message_id: update.message.message_id,
               text: "Выберите города для магазина:",
               reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(
-                inline_keyboard: [[add_general_city_button]] + buttons
+                inline_keyboard: [[add_general_city_button],[yerevan_button]] + buttons
               )
             )
           end
@@ -575,27 +695,71 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
               shop.cities << city
             end
 
-            # Обновляем кнопки
-            all_cities = City.all
             attached_ids = shop.city_ids
 
-            buttons = all_cities.map do |c|
-              attached = attached_ids.include?(c.id)
-              emoji = attached ? '✅' : '➕'
-              Telegram::Bot::Types::InlineKeyboardButton.new(
-                text: "#{emoji} #{c.name}",
-                callback_data: "toggle_city_#{shop.id}_#{c.id}"
-              )
-            end.each_slice(2).to_a
+            if city.sub # 🟡 Обновляем только ереванские места
+              yerevan_places = City.where(sub: true)
+              buttons = yerevan_places.map do |place|
+                attached = attached_ids.include?(place.id)
+                emoji = attached ? '✅' : '➕'
+                Telegram::Bot::Types::InlineKeyboardButton.new(
+                  text: "#{emoji} #{place.name}",
+                  callback_data: "toggle_city_#{shop.id}_#{place.id}"
+                )
+              end.each_slice(2).to_a
 
-            bot.api.edit_message_reply_markup(
-              chat_id: user.telegram_id,
-              message_id: update.message.message_id,
-              reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(
-                inline_keyboard: buttons
+              add_yerevan_place_button = Telegram::Bot::Types::InlineKeyboardButton.new(
+                text: "➕ Ավելացնել վայր Երևանում",
+                callback_data: "add_yerevan_place"
               )
-            )
+
+              back_button = Telegram::Bot::Types::InlineKeyboardButton.new(
+                text: "🔙 Վերադառնալ",
+                callback_data: "edit_cities_#{shop.id}"
+              )
+
+              keyboard = [[add_yerevan_place_button]] + buttons + [[back_button]]
+
+              bot.api.edit_message_reply_markup(
+                chat_id: user.telegram_id,
+                message_id: update.message.message_id,
+                reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(
+                  inline_keyboard: keyboard
+                )
+              )
+            else # 🔵 Обычные города
+              all_cities = City.where(sub: [false, nil])
+              buttons = all_cities.map do |c|
+                attached = attached_ids.include?(c.id)
+                emoji = attached ? '✅' : '➕'
+                Telegram::Bot::Types::InlineKeyboardButton.new(
+                  text: "#{emoji} #{c.name}",
+                  callback_data: "toggle_city_#{shop.id}_#{c.id}"
+                )
+              end.each_slice(2).to_a
+
+              add_general_city_button = Telegram::Bot::Types::InlineKeyboardButton.new(
+                text: "➕ Добавить новый город (общий)",
+                callback_data: "add_city"
+              )
+
+              yerevan_button = Telegram::Bot::Types::InlineKeyboardButton.new(
+                text: "🏙️ Երևան",
+                callback_data: "show_yerevan_subs"
+              )
+
+              keyboard = [[add_general_city_button], [yerevan_button]] + buttons
+
+              bot.api.edit_message_reply_markup(
+                chat_id: user.telegram_id,
+                message_id: update.message.message_id,
+                reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(
+                  inline_keyboard: keyboard
+                )
+              )
+            end
           end
+
         when /^create_promo_(\d+)$/
           shop = Shop.find_by(id: $1)
           if shop && shop.user_id == user.id
@@ -778,7 +942,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
 
         when 'add_shop'
           user.update(step: 'awaiting_username_for_shop')
-          bot.api.send_message(chat_id: user.telegram_id, text: "👤 Введите username пользователя для нового магазина:\\n Или напишите /cancel чтобы отменить")
+          bot.api.send_message(chat_id: user.telegram_id, text: "👤 Введите username пользователя для нового магазина: \\n Или напишите /cancel чтобы отменить")
           
         when 'list_shops'
           shops = Shop.all
@@ -803,35 +967,111 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           else
             bot.api.send_message(chat_id: update.from.id, text: "❌ Магазины не найдены.")
           end
+        
+        when 'yerevan_map'
+          yerevan_places = City.where(sub: true)
 
-        when 'back_to_cities'
-          bot.api.answer_callback_query(callback_query_id: update.id)
+          if yerevan_places.any?
+            place_buttons = yerevan_places.map do |place|
+              Telegram::Bot::Types::InlineKeyboardButton.new(
+                text: place.name,
+                callback_data: "city_#{place.id}"
+              )
+            end.each_slice(2).to_a
 
-          cities = City.all
+            back_button = Telegram::Bot::Types::InlineKeyboardButton.new(
+              text: "🔙 Վերադառնալ",
+              callback_data: "map"
+            )
 
-          if cities.any?
-            keyboard = cities.map do |city|
-              [Telegram::Bot::Types::InlineKeyboardButton.new(
-                text: city.name,
-                callback_data: "city_#{city.id}"
-              )]
-            end
-
-            markup = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: keyboard)
+            keyboard = place_buttons + [[back_button]]
 
             bot.api.edit_message_text(
-              chat_id: update.message.chat.id,
+              chat_id: CHAT_ID,
               message_id: update.message.message_id,
-              text: "Ընտրեք քաղաքը 👇",
-              reply_markup: markup
+              text: "📍 Ընտրիր Երևանի տարածքը:",
+              reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: keyboard)
             )
           else
             bot.api.edit_message_text(
-              chat_id: update.message.chat.id,
+              chat_id: CHAT_ID,
               message_id: update.message.message_id,
-              text: "Քաղաքներ չեն գտնվել։"
+              text: "❌ Երևանում տարածքներ չկան։"
             )
           end
+        
+        when 'map'
+          general_cities = City.where(sub: [false, nil])
+          yerevan_button = Telegram::Bot::Types::InlineKeyboardButton.new(
+            text: "🏙 Երևան",
+            callback_data: "yerevan_map"
+          )
+
+          city_buttons = general_cities.map do |city|
+            Telegram::Bot::Types::InlineKeyboardButton.new(
+              text: city.name,
+              callback_data: "city_#{city.id}"
+            )
+          end
+
+          # группируем по 2 в ряд
+          keyboard = [[yerevan_button]] + city_buttons.each_slice(2).to_a
+
+          markup = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: keyboard)
+
+          bot.api.edit_message_text(
+            chat_id: CHAT_ID,
+            message_id: update.message.message_id,
+            text: "🏙 Ընտրեք քաղաքը 👇",
+            reply_markup: markup
+          )
+
+        when 'show_yerevan_subs'
+          shop = user.shop
+          next unless shop
+
+          yerevan_places = City.where(sub: true)
+          attached_ids = shop.city_ids
+
+          buttons = yerevan_places.map do |city|
+            attached = attached_ids.include?(city.id)
+            emoji = attached ? '✅' : '➕'
+            Telegram::Bot::Types::InlineKeyboardButton.new(
+              text: "#{emoji} #{city.name}",
+              callback_data: "toggle_city_#{shop.id}_#{city.id}"
+            )
+          end.each_slice(2).to_a
+
+          # Кнопка "Добавить место в Ереване"
+          add_yerevan_place_button = Telegram::Bot::Types::InlineKeyboardButton.new(
+            text: "➕ Ավելացնել վայր Երևանում",
+            callback_data: "add_yerevan_place"
+          )
+
+          # Кнопка "Назад"
+          back_button = Telegram::Bot::Types::InlineKeyboardButton.new(
+            text: "🔙 Վերադառնալ",
+            callback_data: "edit_cities_#{shop.id}"
+          )
+
+          keyboard = [[add_yerevan_place_button]] + buttons + [[back_button]]
+
+          bot.api.edit_message_text(
+            chat_id: user.telegram_id,
+            message_id: update.message.message_id,
+            text: "📍 Ընտրիր Երևանի տարածքները:",
+            reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(
+              inline_keyboard: keyboard
+            )
+          )
+
+        when 'add_yerevan_place'
+          user.update(step: 'awaiting_yerevan_name')
+
+          bot.api.send_message(
+            chat_id: user.telegram_id,
+            text: "✍️ Մուտքագրիր Երևանի տարածքի անունը, որ ուզում ես ավելացնել։"
+          )
 
         when 'bonus'
           user.update(step: 'bonus')
