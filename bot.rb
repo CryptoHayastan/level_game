@@ -3,9 +3,9 @@ require_relative 'config/environment'
 require 'rufus-scheduler'
 
 TOKEN = ENV['TELEGRAM_BOT_TOKEN']
-CHANNEL = '@TestStetsaa'
-CHANNEL_LINK = 'https://t.me/TestStetsaa'
-CHAT_ID = -1002291429008
+CHANNEL = '@PlanHubTM'
+CHANNEL_LINK = 'https://t.me/PlanHubTM'
+CHAT_ID = -1002484385346
 SUPERADMINS = User.where(role: 'superadmin')
 
 def find_or_update_user(update)
@@ -391,7 +391,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
               [Telegram::Bot::Types::InlineKeyboardButton.new(text: '🔤 Մուտքագրել պրոմոկոդ', callback_data: 'enter_promo')],
               [Telegram::Bot::Types::InlineKeyboardButton.new(text: '🎁 Բոնուսներ', callback_data: 'bonus')],
               [Telegram::Bot::Types::InlineKeyboardButton.new(text: '🚀 Բուստ x2՝ 2 ժամով', callback_data: 'activate_boost')],
-              [Telegram::Bot::Types::InlineKeyboardButton.new(text: '💬 Մուտք գործել չաթ', url: 'https://t.me/+6x0oA3juKiYzYjMx')]
+              [Telegram::Bot::Types::InlineKeyboardButton.new(text: '💬 Մուտք գործել չաթ', url: 'https://t.me/+H3V09Qh9t701YzVh')]
             ])
 
             bot.api.send_message(chat_id: user.telegram_id, text: info_text.strip, reply_markup: kb)
@@ -405,10 +405,10 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
             unless user.persisted? && (user.ancestry.present? || user.ban?)
               user.update(pending_referrer_id: referrer.id)
               bot.api.send_message(chat_id: user.telegram_id, text: "📩 Շարունակելու համար խնդրում ենք ուղարկել միանալու հայտը չաթին՝")
-              bot.api.send_message(chat_id: user.telegram_id, text: "👉 https://t.me/+6x0oA3juKiYzYjMx")
+              bot.api.send_message(chat_id: user.telegram_id, text: "👉 https://t.me/+H3V09Qh9t701YzVh")
             else
               bot.api.send_message(chat_id: user.telegram_id, text: "⚠️ Դուք արդեն եղել եք չաթի մասնակից և չեք կարող կրկին դառնալ ռեֆերալ։")
-              bot.api.send_message(chat_id: user.telegram_id, text: "👉 https://t.me/+6x0oA3juKiYzYjMx")
+              bot.api.send_message(chat_id: user.telegram_id, text: "👉 https://t.me/+H3V09Qh9t701YzVh")
             end
             else
             bot.api.send_message(chat_id: user.telegram_id, text: "⚠️ Անթույլատրելի ռեֆերալ հղում։")
@@ -1207,7 +1207,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
             ]
           )
 
-          rules_text = "Բարև և բարի գալուստ PlanHub! \n🎉 Մենք ուրախ ենք ձեզ տեսնել մեր հարթակում։\n👉 Անդամակցելով մեր համայնքին, դուք ընդունում եք մեր կանոնները։\n❗️ Պարտադիր է հետևել մեր [Կանալին]( @TestStetsaa ), որպեսզի կարողանաք շարունակել:\n\nՀիշեցում\n📄 Հարթակում կարող են հայտնվել տվյալներ, որոնք նախատեսված են 18+ տարիքի օգտատերերի համար։\n🔐 Անհրաժեշտ է լինել զգոն ու պատասխանատու՝ օգտագործելով համացանցի բոլոր ռեսուրսները։\n\n✨ Կառուցել ենք հարմարավետ միջավայր՝ բոլորի համար:\nՍեղմեք \"Շարունակել\"՝ անդամակցությունը հաստատելու համար։"
+          rules_text = "Բարև և բարի գալուստ PlanHub! \n🎉 Մենք ուրախ ենք ձեզ տեսնել մեր հարթակում։\n👉 Անդամակցելով մեր համայնքին, դուք ընդունում եք մեր կանոնները։\n❗️ Պարտադիր է հետևել մեր [Կանալին]( @PlanHubTM ), որպեսզի կարողանաք շարունակել:\n\nՀիշեցում\n📄 Հարթակում կարող են հայտնվել տվյալներ, որոնք նախատեսված են 18+ տարիքի օգտատերերի համար։\n🔐 Անհրաժեշտ է լինել զգոն ու պատասխանատու՝ օգտագործելով համացանցի բոլոր ռեսուրսները։\n\n✨ Կառուցել ենք հարմարավետ միջավայր՝ բոլորի համար:\nՍեղմեք \"Շարունակել\"՝ անդամակցությունը հաստատելու համար։"
 
           user.update(step: 'pending')
           bot.api.send_message(chat_id: user.telegram_id, text: "Внимание 18+\nУ нас присутствует контент строго для 18+\nВсё это взято из открытого доступа в просторах интернета")
