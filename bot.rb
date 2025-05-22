@@ -793,8 +793,8 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
 
           # Цены бонусов в очках
           bonus_prices = {
-            50 => 10_000,
-            20 => 5_000,
+            50 => 30_000,
+            20 => 10_000,
             5  => 50_000,
             1 => 100_000
           }
@@ -1093,7 +1093,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
 
             bot.api.send_message(
             chat_id: update.from.id,
-            text: "Ընտրեք բոնուսի տեսակը՝\n\n🟢 50% զեղչ — 10.000 LOM\n🟡 20% զեղչ — 5.000 LOM\n💎 0.5 — 50.000 LOM\n💎 1 — 100.000 LOM",
+            text: "Ընտրեք բոնուսի տեսակը՝\n\n🟢 50% զեղչ — 30.000 LOM\n🟡 20% զեղչ — 10.000 LOM\n💎 0.5 — 50.000 LOM\n💎 1 — 100.000 LOM",
             reply_markup: buttons
             )
         when 'activate_boost'
