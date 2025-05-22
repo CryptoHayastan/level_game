@@ -31,7 +31,7 @@ def find_or_update_user(update)
   user.step ||= 'start'
   user.ban ||= false
   user.parent_access ||= true # по умолчанию сам по себе
-  user.referral_link ||= "https://t.me/Kukuruznik_profile_bot?start=#{user.telegram_id}"
+  user.referral_link ||= "https://t.me/PLANhuBot?start=#{user.telegram_id}"
   user.balance ||= 0
   user.score ||= 0
   user.save!
@@ -115,7 +115,7 @@ def collect_daily_bonus(user, bot, telegram_id, callback_query)
   user_info = <<~HTML
     Անուն: #{safe_telegram_name(callback_query.from)}
     Բալանս: #{user.balance} LOM
-    🔗 Ձեր հրավիրելու հղումը <code>https://t.me/Kukuruznik_profile_bot?start=#{user.telegram_id}</code>
+    🔗 Ձեր հրավիրելու հղումը <code>https://t.me/PLANhuBot?start=#{user.telegram_id}</code>
     👥 Ռեֆերալներ: #{referrals_count}
     🛒 Գնումներ: #{purchases_count}
 
@@ -316,7 +316,7 @@ def create_promo_code(bot, user, shop_id, product_type_str)
       🎯 Տեսակ՝ #{product_name}
 
       📥 Ինչպես օգտագործել․
-      1. Բացիր բոտը 👉 [@Kukuruznik_profile_bot](https://t.me/Kukuruznik_profile_bot)
+      1. Բացիր բոտը 👉 [@PLANhuBot](https://t.me/PLANhuBot)
       2. Սեղմիր **«Start»** կամ ուղարկիր հրամանը `/start`
       3. Մուտքագրիր քո կոդը՝ `#{promo_code}`
       4. Ստացիր բոնուսներ կամ հատուկ առաջարկներ 🎁
@@ -428,7 +428,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           user_info = <<~HTML
             👤 Անուն: #{safe_telegram_name(update.from)}
             💰 Բալանս: #{user.balance} LOM
-            🔗 Ձեր հրավիրելու հղումը <code>https://t.me/Kukuruznik_profile_bot?start=#{user.telegram_id}</code>
+            🔗 Ձեր հրավիրելու հղումը <code>https://t.me/PLANhuBot?start=#{user.telegram_id}</code>
             👥 Ռեֆերալներ: #{referrals_count}
             🛒 Գնումներ: #{purchases_count}
 
