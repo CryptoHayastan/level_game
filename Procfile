@@ -1,0 +1,1 @@
+web: RAILS_ENV=production bundle exec ruby bot.rb

@@ -374,24 +374,28 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
         when '/start'
           user.update(step: nil)
 
-          full_name = [user.first_name, user.last_name].compact.join(' ')
-          balance = user.balance || 0
+          if user.role == 'shop'
+            bot.api.send_message(chat_id: user.telegram_id, text: "👤 Դուք Հաճախորդ չեք։ Խնդրում ենք ուղարկել /my_shop հրամանը")
+          else
+            full_name = [user.first_name, user.last_name].compact.join(' ')
+            balance = user.balance || 0
 
-          info_text = <<~TEXT
-            👤 Անուն: #{full_name}
-            💰 Բալանս: #{balance} LOM
+            info_text = <<~TEXT
+              👤 Անուն: #{full_name}
+              💰 Բալանս: #{balance} LOM
 
-            Ընտրեք գործողություն 👇
-          TEXT
+              Ընտրեք գործողություն 👇
+            TEXT
 
-          kb = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: [
-            [Telegram::Bot::Types::InlineKeyboardButton.new(text: '🔤 Մուտքագրել պրոմոկոդ', callback_data: 'enter_promo')],
-            [Telegram::Bot::Types::InlineKeyboardButton.new(text: '🎁 Բոնուսներ', callback_data: 'bonus')],
-            [Telegram::Bot::Types::InlineKeyboardButton.new(text: '🚀 Բուստ x2՝ 2 ժամով', callback_data: 'activate_boost')],
-            [Telegram::Bot::Types::InlineKeyboardButton.new(text: '💬 Մուտք գործել չաթ', url: 'https://t.me/+6x0oA3juKiYzYjMx')]
-          ])
+            kb = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: [
+              [Telegram::Bot::Types::InlineKeyboardButton.new(text: '🔤 Մուտքագրել պրոմոկոդ', callback_data: 'enter_promo')],
+              [Telegram::Bot::Types::InlineKeyboardButton.new(text: '🎁 Բոնուսներ', callback_data: 'bonus')],
+              [Telegram::Bot::Types::InlineKeyboardButton.new(text: '🚀 Բուստ x2՝ 2 ժամով', callback_data: 'activate_boost')],
+              [Telegram::Bot::Types::InlineKeyboardButton.new(text: '💬 Մուտք գործել չաթ', url: 'https://t.me/+6x0oA3juKiYzYjMx')]
+            ])
 
-          bot.api.send_message(chat_id: user.telegram_id, text: info_text.strip, reply_markup: kb)
+            bot.api.send_message(chat_id: user.telegram_id, text: info_text.strip, reply_markup: kb)
+          end
 
         when /^\/start (\d+)$/
           referrer_telegram_id = $1.to_i
