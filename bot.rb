@@ -272,7 +272,7 @@ def steps(user, update, bot)
         bot.api.send_message(chat_id: user.telegram_id, text: "Դուք արդեն օգտագործել եք այս պրոմոկոդը։")
         user.update(step: nil)
       else
-        balance_to_add = promo.product_type == 1 ? 5000 : 10000
+        balance_to_add = promo.product_type == 1 ? 3000 : 6000
         user.balance ||= 0
         user.balance += balance_to_add
         user.score += balance_to_add
@@ -284,7 +284,7 @@ def steps(user, update, bot)
         bot.api.send_message(chat_id: user.telegram_id, text: "Պրոմոկոդը հաջողությամբ ընդունվել է։ Դուք ստացաք #{balance_to_add} LOM։ Ներկայիս բալանս՝ #{user.balance} LOM։")
       end
     else
-      # Пользователь нажал кнопку или отправил не текст
+      # Пользователь нажал кнопку или отправил 10 текст
       bot.api.send_message(chat_id: user.telegram_id, text: "Խնդրում ենք ուղարկել տեքստ՝ որպես պրոմոկոդ։")
     end
   end
