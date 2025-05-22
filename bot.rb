@@ -535,7 +535,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
 
             message = "🏆 Թոփ 10 օգտատերեր միավորներով՝\n\n"
           top_users.each_with_index do |u, i|
-            name = u.username.present? ? "@#{u.username}" : "#{u.first_name} #{u.last_name}"
+            name = "#{u.first_name} #{u.last_name}"
             message += "#{i + 1}. #{name} — #{u.score} LOM\n"
           end
 
