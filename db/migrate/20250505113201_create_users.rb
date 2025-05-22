@@ -9,7 +9,9 @@ class CreateUsers < ActiveRecord::Migration[8.0]
       t.string :step
       t.boolean :ban
       t.integer :balance
+      t.integer :score
       t.string :referral_link
+      t.integer :pending_referrer_id
       t.boolean :parent_access, default: true
       t.string :ancestry
 

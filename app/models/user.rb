@@ -4,6 +4,7 @@ class User < ApplicationRecord
   has_one :shop, dependent: :destroy
   has_one :message_count, dependent: :destroy
   has_many :promo_usages, dependent: :destroy
+  has_many :boosts, dependent: :destroy
   
   after_create :create_message_count
 
@@ -18,6 +19,16 @@ class User < ApplicationRecord
   def add_message_point!
     mc = message_count || create_message_count
     mc.increment!(:count)
-    increment!(:balance)
+
+    points = active_boost ? 2 : 1
+    increment!(:balance, points)
+  end
+
+  def active_boost
+    boosts.order(activated_at: :desc).find { |b| b.active? }
+  end
+
+  def boost_today?
+    boosts.any? { |b| b.today_used? }
   end
 end

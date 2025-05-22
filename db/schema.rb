@@ -10,9 +10,17 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_05_16_090742) do
+ActiveRecord::Schema[8.0].define(version: 2025_05_21_113604) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "boosts", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.datetime "activated_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_boosts_on_user_id"
+  end
 
   create_table "cities", force: :cascade do |t|
     t.string "name"
@@ -87,13 +95,16 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_16_090742) do
     t.string "step"
     t.boolean "ban"
     t.integer "balance"
+    t.integer "score"
     t.string "referral_link"
+    t.integer "pending_referrer_id"
     t.boolean "parent_access", default: true
     t.string "ancestry"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
   end
 
+  add_foreign_key "boosts", "users"
   add_foreign_key "city_shops", "cities"
   add_foreign_key "city_shops", "shops"
   add_foreign_key "daily_bonus", "users"

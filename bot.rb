@@ -3,7 +3,8 @@ require_relative 'config/environment'
 require 'rufus-scheduler'
 
 TOKEN = ENV['TELEGRAM_BOT_TOKEN']
-CHANNEL = '@KukuruznikTM'
+CHANNEL = '@TestStetsaa'
+CHANNEL_LINK = 'https://t.me/TestStetsaa'
 CHAT_ID = -1002291429008
 SUPERADMINS = User.where(role: 'superadmin')
 
@@ -32,6 +33,7 @@ def find_or_update_user(update)
   user.parent_access ||= true # по умолчанию сам по себе
   user.referral_link ||= "https://t.me/Kukuruznik_profile_bot?start=#{user.telegram_id}"
   user.balance ||= 0
+  user.score ||= 0
   user.save!
 
   user
@@ -81,7 +83,7 @@ def collect_daily_bonus(user, bot, telegram_id, callback_query)
   if daily_bonus.last_collected_at&.to_date == now.to_date
     bot.api.answer_callback_query(
       callback_query_id: callback_query.id,
-      text: "📅 Вы уже собрали бонус сегодня. Возвращайтесь завтра!"
+      text: "📅 Դուք արդեն ստացել եք բոնուսը այսօր։ Վերադարձեք վաղը։"
     )
     return
   end
@@ -92,37 +94,38 @@ def collect_daily_bonus(user, bot, telegram_id, callback_query)
 
   daily_bonus.bonus_day += 1
   daily_bonus.last_collected_at = now
-  reward = daily_bonus.bonus_day * 10
+  reward = daily_bonus.bonus_day * 100
 
   user.balance += reward
+  user.score += reward
   daily_bonus.save!
   user.save!
 
   bot.api.answer_callback_query(
     callback_query_id: callback_query.id,
-    text: "✅ Бонус получен: +#{reward} очков"
+    text: "✅ Բոնուսը ստացվեց՝ +#{reward} միավոր"
   )
 
-  # 🔁 Обновление профиля
+  # 🔁 Թարմացնել պրոֆիլը
   bonus_day = daily_bonus.bonus_day > 10 ? 1 : daily_bonus.bonus_day
   progress = ("🟩" * bonus_day) + ("⬜" * (10 - bonus_day))
   referrals_count = user.children.count
   purchases_count = user.promo_usages.count
 
   user_info = <<~HTML
-    Имя: #{safe_telegram_name(callback_query.from)}
-    Баланс: #{user.balance} LOM
-    🔗 Ваша ссылка для приглашений <code>https://t.me/Kukuruznik_profile_bot?start=#{user.telegram_id}</code>
-    👥 Рефералов: #{referrals_count}
-    🛒 Покупок: #{purchases_count}
+    Անուն: #{safe_telegram_name(callback_query.from)}
+    Բալանս: #{user.balance} LOM
+    🔗 Ձեր հրավիրելու հղումը <code>https://t.me/Kukuruznik_profile_bot?start=#{user.telegram_id}</code>
+    👥 Ռեֆերալներ: #{referrals_count}
+    🛒 Գնումներ: #{purchases_count}
 
-    📅 Бонус: День #{bonus_day} из 10
+    📅 Բոնուս: Օր #{bonus_day} - 10-ից
     #{progress}
   HTML
 
   buttons = [
     [Telegram::Bot::Types::InlineKeyboardButton.new(
-      text: "Получить ежедневный бонус", callback_data: "daily_bonus_#{user.telegram_id}"
+      text: "Ստանալ օրական բոնուսը", callback_data: "daily_bonus_#{user.telegram_id}"
     )]
   ]
 
@@ -173,32 +176,39 @@ def steps(user, update, bot)
 
     bot.api.send_message(chat_id: user.telegram_id, text: "✅ Город *#{city.name}* успешно добавлен в общий список.", parse_mode: 'Markdown')
   when 'waiting_for_promo_code'
-    promo_code_text = message.text.strip
-    promo = PromoCode.find_by(code: promo_code_text)
+    if update && update.text
+      promo_code_text = update.text.strip
+      promo = PromoCode.find_by(code: promo_code_text)
 
-    if promo.nil?
-      bot.api.send_message(chat_id: user.telegram_id, text: "Промокод не найден. Попробуйте ещё раз или отправьте /start для выхода.")
-    elsif promo.expired?
-      bot.api.send_message(chat_id: user.telegram_id, text: "Промокод истёк.")
-    elsif PromoUsage.exists?(user_id: user.id, promo_code_id: promo.id)
-      bot.api.send_message(chat_id: user.telegram_id, text: "Вы уже использовали этот промокод.")
+      if promo.nil?
+        bot.api.send_message(chat_id: user.telegram_id, text: "Պրոմոկոդը չի գտնվել։ Փորձեք նորից")
+        user.update(step: nil)
+      elsif promo.expired?
+        bot.api.send_message(chat_id: user.telegram_id, text: "Պրոմոկոդի վավերականությունը սպառվել է։")
+        user.update(step: nil)
+      elsif PromoUsage.exists?(user_id: user.id, promo_code_id: promo.id)
+        bot.api.send_message(chat_id: user.telegram_id, text: "Դուք արդեն օգտագործել եք այս պրոմոկոդը։")
+        user.update(step: nil)
+      else
+        balance_to_add = promo.product_type == 1 ? 5000 : 10000
+        user.balance ||= 0
+        user.balance += balance_to_add
+        user.score += balance_to_add
+        user.step = nil
+        user.save!
+
+        PromoUsage.create!(user_id: user.id, promo_code_id: promo.id)
+
+        bot.api.send_message(chat_id: user.telegram_id, text: "Պրոմոկոդը հաջողությամբ ընդունվել է։ Դուք ստացաք #{balance_to_add} LOM։ Ներկայիս բալանս՝ #{user.balance} LOM։")
+      end
     else
-      balance_to_add = promo.product_type == 1 ? 5000 : 12000
-      user.balance ||= 0
-      user.balance += balance_to_add
-      user.step = nil
-      user.save!
-
-      PromoUsage.create!(user_id: user.id, promo_code_id: promo.id)
-
-      bot.api.send_message(chat_id: user.telegram_id, text: "Промокод принят! Вам начислено #{balance_to_add} очков. Текущий баланс: #{user.balance}.")
+      # Пользователь нажал кнопку или отправил не текст
+      bot.api.send_message(chat_id: user.telegram_id, text: "Խնդրում ենք ուղարկել տեքստ՝ որպես պրոմոկոդ։")
     end
   end
 end
 
 def create_promo_code(bot, user, shop_id, product_type_str)
-  puts "DEBUG: create_promo_code called with bot=#{bot}, user=#{user}, shop_id=#{shop_id}, product_type=#{product_type_str}"
-
   # ОБЯЗАТЕЛЬНО передаём аргумент (например, 8)
   promo_code = "#{shop_id}:#{product_type_str}:#{SecureRandom.hex(8)}"
   begin
@@ -207,7 +217,7 @@ def create_promo_code(bot, user, shop_id, product_type_str)
     promo = PromoCode.create!(
       code: promo_code,
       shop_id: shop_id,
-      product_type: :product1,
+      product_type: product_type_str == 1 ? 1 : 2,
       expires_at: expires_at
     )
   rescue => e
@@ -216,7 +226,7 @@ def create_promo_code(bot, user, shop_id, product_type_str)
   end
 
   if promo.persisted?
-    product_name = product_type_str == 1 ? "Продукт 1 (5000 очков)" : "Продукт 2 (12000 очков)"
+    product_name = product_type_str == 1 ? "0,5" : "1"
 
     bot.api.send_message(
       chat_id: user.telegram_id,
@@ -252,7 +262,6 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
     end
   end
 
-
   bot.listen do |update|
     begin
       user = find_or_update_user(update)
@@ -268,36 +277,42 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
         case text
         when '/start'
           user.update(step: nil)
+
+          full_name = [user.first_name, user.last_name].compact.join(' ')
+          balance = user.balance || 0
+
+          info_text = <<~TEXT
+            👤 Անուն: #{full_name}
+            💰 Բալանս: #{balance} LOM
+
+            Ընտրեք գործողություն 👇
+          TEXT
+
           kb = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: [
-            [Telegram::Bot::Types::InlineKeyboardButton.new(text: 'Ввести промокод', callback_data: 'enter_promo')],
-            [Telegram::Bot::Types::InlineKeyboardButton.new(text: 'Бонуси', callback_data: 'bonus')]
+            [Telegram::Bot::Types::InlineKeyboardButton.new(text: '🔤 Մուտքագրել պրոմոկոդ', callback_data: 'enter_promo')],
+            [Telegram::Bot::Types::InlineKeyboardButton.new(text: '🎁 Բոնուսներ', callback_data: 'bonus')],
+            [Telegram::Bot::Types::InlineKeyboardButton.new(text: '🚀 Բուստ x2՝ 2 ժամով', callback_data: 'activate_boost')],
+            [Telegram::Bot::Types::InlineKeyboardButton.new(text: '💬 Մուտք գործել չաթ', url: 'https://t.me/+6x0oA3juKiYzYjMx')]
           ])
-          bot.api.send_message(chat_id: user.telegram_id, text: 'Привет! Нажмите кнопку, чтобы ввести промокод.', reply_markup: kb)
+
+          bot.api.send_message(chat_id: user.telegram_id, text: info_text.strip, reply_markup: kb)
 
         when /^\/start (\d+)$/
           referrer_telegram_id = $1.to_i
-          puts "Реферал ID: #{referrer_telegram_id}"
-
           referrer = User.find_by(telegram_id: referrer_telegram_id)
 
-          if referrer.nil?
-            bot.api.send_message(chat_id: user.telegram_id, text: "❌ Реферал с таким ID не найден.")
-          elsif referrer.id == user.id
-            bot.api.send_message(chat_id: user.telegram_id, text: "⚠️ Вы не можете пригласить сами себя!")
-          elsif user.ancestry.present?
-            bot.api.send_message(chat_id: user.telegram_id, text: "⚠️ Вы уже были привязаны к другому пользователю.")
-          else
-            user.ancestry = referrer.id
-            if user.save
-              referrer.increment!(:balance, 1000)
-              bot.api.send_message(chat_id: user.telegram_id, text: "🎉 Реферал успешно засчитан!.")
+            if referrer && referrer.telegram_id != user.telegram_id
+            unless user.persisted? && (user.ancestry.present? || user.ban?)
+              user.update(pending_referrer_id: referrer.id)
+              bot.api.send_message(chat_id: user.telegram_id, text: "📩 Շարունակելու համար խնդրում ենք ուղարկել միանալու հայտը չաթին՝")
+              bot.api.send_message(chat_id: user.telegram_id, text: "👉 https://t.me/+6x0oA3juKiYzYjMx")
             else
-              # Тут сработала валидация модели, например "User cannot be a descendant of itself"
-              error_msg = user.errors.full_messages.join(", ")
-              puts "❌ Ошибка при сохранении: #{error_msg}"
-              bot.api.send_message(chat_id: user.telegram_id, text: "❌ Не удалось сохранить реферала: #{error_msg}")
+              bot.api.send_message(chat_id: user.telegram_id, text: "⚠️ Դուք արդեն եղել եք չաթի մասնակից և չեք կարող կրկին դառնալ ռեֆերալ։")
+              bot.api.send_message(chat_id: user.telegram_id, text: "👉 https://t.me/+6x0oA3juKiYzYjMx")
             end
-          end
+            else
+            bot.api.send_message(chat_id: user.telegram_id, text: "⚠️ Անթույլատրելի ռեֆերալ հղում։")
+            end
 
         when '/profile'
           bonus_day = user.daily_bonus&.bonus_day.to_i
@@ -311,22 +326,23 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           purchases_count = user.promo_usages.count
 
           user_info = <<~HTML
-            Имя: #{safe_telegram_name(update.from)}
-            Баланс: #{user.balance} LOM
-            🔗 Ваша ссылка для приглашений <code>https://t.me/Kukuruznik_profile_bot?start=#{user.telegram_id}</code>
-            👥 Рефералов: #{referrals_count}
-            🛒 Покупок: #{purchases_count}
+            👤 Անուն: #{safe_telegram_name(update.from)}
+            💰 Բալանս: #{user.balance} LOM
+            🔗 Ձեր հրավիրելու հղումը <code>https://t.me/Kukuruznik_profile_bot?start=#{user.telegram_id}</code>
+            👥 Ռեֆերալներ: #{referrals_count}
+            🛒 Գնումներ: #{purchases_count}
 
-            📅 Бонус: День #{bonus_day} из 10
+            📅 Բոնուս: Օր #{bonus_day} - 10-ից
             #{progress}
           HTML
-  
+
           buttons = [
-            [Telegram::Bot::Types::InlineKeyboardButton.new(text: "Получить ежедневный бонус", callback_data: "daily_bonus_#{user.telegram_id}")]
+            [Telegram::Bot::Types::InlineKeyboardButton.new(text: "🎁 Ստանալ օրական բոնուսը", callback_data: "daily_bonus_#{user.telegram_id}")]
           ]
-  
+
           bot.api.send_message(
-            chat_id: CHAT_ID,
+            chat_id: update.chat.id,
+            reply_to_message_id: update.message_id,
             text: user_info,
             parse_mode: "HTML",
             reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: buttons)
@@ -364,29 +380,72 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           end
 
         when '/kap'
+          shops_online = Shop.where(online: true)
+          shops_offline = Shop.where(online: false)
+
+          text = "<b>🛍 Հարթակում վստահված Խանութների հղումները՝</b>\n\n"
+
+          if shops_online.any?
+            text += "🟢 Կապ (օնլայն):\n"
+            shops_online.each do |shop|
+              text += "• @#{shop.link}\n"
+            end
+            text += "\n"
+          end
+
+          if shops_offline.any?
+            text += "🔴 Կապ չկա (օֆլայն):\n"
+            shops_offline.each do |shop|
+              text += "• @#{shop.link}\n"
+            end
+          end
+
+          bot.api.send_message(
+            chat_id: update.chat.id,
+            text: text,
+            parse_mode: 'HTML'
+          )
+        when '/map'
           cities = City.all
 
-          city_buttons = cities.map do |city|
+          if cities.any?
+            keyboard = cities.each_slice(2).map do |city_pair|
+              city_pair.map do |city|
+                Telegram::Bot::Types::InlineKeyboardButton.new(
+                  text: city.name,
+                  callback_data: "city_#{city.id}"
+                )
+              end
+            end
 
-            Telegram::Bot::Types::InlineKeyboardButton.new(
-              text: city.name,
-              callback_data: "city_#{city.id}"
+            markup = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: keyboard)
+
+            bot.api.send_message(
+              chat_id: update.chat.id,
+              text: "🏙 Ընտրեք քաղաքը 👇",
+              reply_markup: markup
             )
+          else
+            bot.api.send_message(chat_id: update.chat.id, text: "Քաղաքներ չեն գտնվել։")
           end
-          city_buttons = city_buttons.each_slice(2).to_a
-          city_buttons << [Telegram::Bot::Types::InlineKeyboardButton.new(text: "Назад", callback_data: "back_to_main_menu")]
-          
-          bot.api.send_message(
-            chat_id: CHAT_ID,
-            text: "Выберите город:",
-            reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: city_buttons)
-          )
+
+        when '/top'
+          top_users = User.order(score: :desc).limit(10)
+
+            message = "🏆 Թոփ 10 օգտատերեր միավորներով՝\n\n"
+          top_users.each_with_index do |u, i|
+            name = u.username.present? ? "@#{u.username}" : "#{u.first_name} #{u.last_name}"
+            message += "#{i + 1}. #{name} — #{u.score} LOM\n"
+          end
+
+          bot.api.send_message(chat_id: CHAT_ID, text: message)
 
         when '/admin'
           if user.role == 'superadmin'
             kb = [
               [Telegram::Bot::Types::InlineKeyboardButton.new(text: '📋 Все магазины', callback_data: 'list_shops')],
-              [Telegram::Bot::Types::InlineKeyboardButton.new(text: '➕ Добавить магазин', callback_data: 'add_shop')]
+              [Telegram::Bot::Types::InlineKeyboardButton.new(text: '➕ Добавить магазин', callback_data: 'add_shop')],
+              [Telegram::Bot::Types::InlineKeyboardButton.new(text: '🧨 Обнулить очки пользователей', callback_data: 'confirm_reset_scores')]
             ]
 
             markup = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: kb)
@@ -399,6 +458,8 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
         else
           if update.text.present? && !update.sticker && !update.animation && !update.photo && update.chat.id == CHAT_ID
             user.add_message_point!
+            points = user.active_boost ? 2 : 1
+            user.increment!(:score, points)
           end
         end
   
@@ -411,8 +472,38 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           collect_daily_bonus(user, bot, telegram_id, update)
 
         when /^city_/
-          city_id = data.split('_').last.to_i
+          bot.api.answer_callback_query(callback_query_id: update.id)
+
+          city_id = update.data.split('_').last.to_i
           city = City.find_by(id: city_id)
+
+          if city.nil?
+            bot.api.answer_callback_query(callback_query_id: update.id, text: "Քաղաքը չի գտնվել։", show_alert: true)
+            return
+          end
+
+          shops = city.shops
+
+          shop_list = if shops.any?
+                        shops.map do |shop|
+                          status = shop.online ? "🟢" : "🔴"
+                          "• @#{shop.link} #{status}"
+                        end.join("\n")
+                      else
+                        "❌ Այս քաղաքում խանութներ չկան։"
+                      end
+
+          buttons = [
+            [Telegram::Bot::Types::InlineKeyboardButton.new(text: "🔙 Վերադառնալ քաղաքներ", callback_data: "back_to_cities")]
+          ]
+
+          bot.api.edit_message_text(
+            chat_id: update.message.chat.id,
+            message_id: update.message.message_id,
+            text: "🏙 <b>Քաղաք՝</b> #{city.name}\n\n#{shop_list}",
+            parse_mode: 'HTML',
+            reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: buttons)
+          )
 
         when /^delete_shop_(\d+)$/
           shop_id = $1.to_i
@@ -514,8 +605,8 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
               reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(
                 inline_keyboard: [
                   [
-                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "📦 Продукт 1 (5000 очков)", callback_data: "product1_#{shop.id}"),
-                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "🎁 Продукт 2 (12000 очков)", callback_data: "product2_#{shop.id}")
+                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "0,5", callback_data: "product1_#{shop.id}"),
+                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "1", callback_data: "product2_#{shop.id}")
                   ]
                 ]
               )
@@ -534,42 +625,41 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
 
           # Цены бонусов в очках
           bonus_prices = {
-            50 => 200_000,
-            20 => 100_000,
-            5  => 500_000,
-            1 => 1_000_000
+            50 => 10_000,
+            20 => 5_000,
+            5  => 50_000,
+            1 => 100_000
           }
 
           price = bonus_prices[discount]
-
-          if user.balance.to_i < price
+            if user.balance.to_i < price
             bot.api.send_message(
               chat_id: user.telegram_id,
-              text: "У вас недостаточно очков для покупки бонуса #{discount}% скидка. Нужно #{price}, у вас #{user.balance}."
+              text: "Ձեր միավորները բավարար չեն #{discount}% զեղչի բոնուսը ստանալու համար։ Անհրաժեշտ է #{price}, ձեր բալանսը՝ #{user.balance}։"
             )
             next
-          end
+            end
 
-          # Списываем очки
-          user.balance -= price
-          user.step = 'waiting_admin_contact' # блокируем смену имени
-          user.save!
+            # Սահմանում ենք միավորները
+            user.balance -= price
+            user.step = 'waiting_admin_contact' # արգելափակում ենք անունը փոխելը
+            user.save!
 
-          # Сообщение пользователю
-          user_message = <<~HTML
-            Спасибо за выбор бонуса: #{discount}% скидка! 🎉
+            # Հաղորդագրություն օգտատիրոջը
+            user_message = <<~HTML
+            Շնորհակալություն բոնուս ընտրելու համար՝ #{discount}% զեղչ! 🎉
 
-            С вашего баланса списано #{price} очков.
+            Ձեր բալանսից հանվել է #{price} LOM։
 
-            Пожалуйста, подождите, пока с вами свяжется администратор.
-            Не меняйте своё имя пользователя до этого момента.
-          HTML
+            Խնդրում ենք սպասել, մինչ ադմինիստրատորը կապ կհաստատի ձեզ հետ։
+            Մինչ այդ մի փոխեք ձեր օգտանունը։
+            HTML
 
-          bot.api.send_message(
+            bot.api.send_message(
             chat_id: user.telegram_id,
             text: user_message,
             parse_mode: 'HTML'
-          )
+            )
 
           # Собираем данные для суперадминов
 
@@ -679,7 +769,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
 
         when 'enter_promo'
           user.update(step: 'waiting_for_promo_code')
-          bot.api.send_message(chat_id: user.telegram_id, text: 'Введите ваш промокод:')
+            bot.api.send_message(chat_id: user.telegram_id, text: 'Մուտքագրեք ձեր պրոմոկոդը:')
           bot.api.answer_callback_query(callback_query_id: update.id) # убираем часики у кнопки
 
         when 'add_city'
@@ -713,25 +803,171 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           else
             bot.api.send_message(chat_id: update.from.id, text: "❌ Магазины не найдены.")
           end
+
+        when 'back_to_cities'
+          bot.api.answer_callback_query(callback_query_id: update.id)
+
+          cities = City.all
+
+          if cities.any?
+            keyboard = cities.map do |city|
+              [Telegram::Bot::Types::InlineKeyboardButton.new(
+                text: city.name,
+                callback_data: "city_#{city.id}"
+              )]
+            end
+
+            markup = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: keyboard)
+
+            bot.api.edit_message_text(
+              chat_id: update.message.chat.id,
+              message_id: update.message.message_id,
+              text: "Ընտրեք քաղաքը 👇",
+              reply_markup: markup
+            )
+          else
+            bot.api.edit_message_text(
+              chat_id: update.message.chat.id,
+              message_id: update.message.message_id,
+              text: "Քաղաքներ չեն գտնվել։"
+            )
+          end
+
         when 'bonus'
           user.update(step: 'bonus')
 
           buttons = Telegram::Bot::Types::InlineKeyboardMarkup.new(
             inline_keyboard: [
               [
-                Telegram::Bot::Types::InlineKeyboardButton.new(text: '50% скидка', callback_data: 'bonus_50'),
-                Telegram::Bot::Types::InlineKeyboardButton.new(text: '20% скидка', callback_data: 'bonus_20'),
-                Telegram::Bot::Types::InlineKeyboardButton.new(text: '1', callback_data: 'bonus_1'),
-                Telegram::Bot::Types::InlineKeyboardButton.new(text: '0,5',  callback_data: 'bonus_5')
+                Telegram::Bot::Types::InlineKeyboardButton.new(text: '20% զեղչ', callback_data: 'bonus_20'),
+                Telegram::Bot::Types::InlineKeyboardButton.new(text: '50% զեղչ', callback_data: 'bonus_50'),
+                Telegram::Bot::Types::InlineKeyboardButton.new(text: '0,5',  callback_data: 'bonus_5'),
+                Telegram::Bot::Types::InlineKeyboardButton.new(text: '1', callback_data: 'bonus_1')
               ]
             ]
           )
 
-          bot.api.send_message(
+            bot.api.send_message(
             chat_id: update.from.id,
-            text: "Выберите тип бонуса:",
+            text: "Ընտրեք բոնուսի տեսակը՝\n\n🟢 50% զեղչ — 10.000 LOM\n🟡 20% զեղչ — 5.000 LOM\n💎 0.5 — 50.000 LOM\n💎 1 — 100.000 LOM",
             reply_markup: buttons
+            )
+        when 'activate_boost'
+          if user.boost_today?
+            bot.api.answer_callback_query(
+              callback_query_id: update.id,
+              text: "❗️Вы уже использовали буст сегодня. Попробуйте завтра."
+            )
+          else
+            user.boosts.create!(activated_at: Time.current)
+            bot.api.answer_callback_query(
+              callback_query_id: update.id,
+              text: "🚀 Буст x2 активирован на 2 часа!"
+            )
+
+            bot.api.send_message(
+              chat_id: user.telegram_id,
+              text: "Ваш буст активен! В течение 2 часов ваши сообщения будут считаться x2!"
+            )
+          end
+        
+        when 'check_subscription'
+          user_id = user.telegram_id
+          begin
+            chat_member = bot.api.get_chat_member(chat_id: CHANNEL, user_id: user_id)
+            status = chat_member.status rescue nil
+
+            if %w[member administrator creator].include?(status)
+              bot.api.approve_chat_join_request(chat_id: CHAT_ID, user_id: user_id)
+              user.update(step: 'approved')
+
+              # Удаляем кнопки после проверки
+              if update.message
+                bot.api.edit_message_reply_markup(
+                  chat_id: update.message.chat.id,
+                  message_id: update.message.message_id,
+                  reply_markup: nil
+                )
+              end
+
+              bot.api.send_message(chat_id: user_id, text: "✅ Բարի գալուստ չատ!")
+
+              # Отображаем имя
+              name = user&.username.present? ? "@#{user.username}" : "#{[user&.first_name, user&.last_name].compact.join(' ')}"
+              bot.api.send_message(chat_id: CHAT_ID, text: "✅ Բարի գալուստ չատ! #{name}")
+
+              # === НАЧИСЛЕНИЕ ОЧКОВ ===
+              if user.pending_referrer_id.present? && user.ancestry.blank?
+                referrer = User.find_by(id: user.pending_referrer_id)
+
+                if referrer && !user.ban? && user.step == 'approved'
+                  user.update(ancestry: referrer.id, pending_referrer_id: nil)
+                  referrer.increment!(:balance, 2000)
+                  referrer.increment!(:score, 2000)
+
+                    bot.api.send_message(chat_id: referrer.telegram_id, text: "🎉 Նոր օգտատեր միացավ ձեր հղումով։ Դուք ստացել եք 2.000 LOM։")
+                end
+              end
+              # =========================
+
+            else
+              bot.api.answer_callback_query(
+                callback_query_id: update.id,
+                text: "❗️Դուք դեռ բաժանորդագրված չեք։",
+                show_alert: true
+              )
+            end
+          rescue => e
+            puts "Ошибка при проверке подписки: #{e.message}"
+            bot.api.answer_callback_query(
+              callback_query_id: update.id,
+              text: "❌ Սխալ առաջացավ։",
+              show_alert: true
+            )
+          end
+        when 'confirm_reset_scores'
+          if user.role == 'superadmin'
+            kb = [
+              [Telegram::Bot::Types::InlineKeyboardButton.new(text: '✅ Да, обнулить', callback_data: 'reset_scores')],
+              [Telegram::Bot::Types::InlineKeyboardButton.new(text: '❌ Отмена', callback_data: 'cancel_reset')]
+            ]
+
+            markup = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: kb)
+            bot.api.send_message(chat_id: user.telegram_id, text: "⚠️ Вы уверены, что хотите обнулить все очки пользователей?", reply_markup: markup)
+          end
+        when 'cancel_reset'
+          if user.role == 'superadmin'
+            bot.api.send_message(chat_id: user.telegram_id, text: "❌ Обнуление отменено.")
+          end
+        when 'reset_scores'
+          if user.role == 'superadmin'
+            User.update_all(score: 0)
+            bot.api.send_message(chat_id: user.telegram_id, text: "✅ Очки всех пользователей обнулены.")
+          else
+            bot.api.send_message(chat_id: user.telegram_id, text: "❌ У вас нет доступа.")
+          end
+        end
+      
+      when Telegram::Bot::Types::ChatJoinRequest
+        user_id = update.from.id
+        chat_id = update.chat.id
+
+        next if user.nil?
+
+        if user.ban
+          bot.api.send_message(chat_id: user.telegram_id, text: "❌ Դուք նախկինում լքել եք չատը և չեք կարող կրկին միանալ։")
+        else
+          markup = Telegram::Bot::Types::InlineKeyboardMarkup.new(
+            inline_keyboard: [
+              [Telegram::Bot::Types::InlineKeyboardButton.new(text: '✅ Շարունակել', callback_data: 'check_subscription')]
+            ]
           )
+
+          rules_text = "Բարև և բարի գալուստ PlanHub! \n🎉 Մենք ուրախ ենք ձեզ տեսնել մեր հարթակում։\n👉 Անդամակցելով մեր համայնքին, դուք ընդունում եք մեր կանոնները։\n❗️ Պարտադիր է հետևել մեր [Կանալին]( @TestStetsaa ), որպեսզի կարողանաք շարունակել:\n\nՀիշեցում\n📄 Հարթակում կարող են հայտնվել տվյալներ, որոնք նախատեսված են 18+ տարիքի օգտատերերի համար։\n🔐 Անհրաժեշտ է լինել զգոն ու պատասխանատու՝ օգտագործելով համացանցի բոլոր ռեսուրսները։\n\n✨ Կառուցել ենք հարմարավետ միջավայր՝ բոլորի համար:\nՍեղմեք \"Շարունակել\"՝ անդամակցությունը հաստատելու համար։"
+
+          user.update(step: 'pending')
+          bot.api.send_message(chat_id: user.telegram_id, text: "Внимание 18+\nУ нас присутствует контент строго для 18+\nВсё это взято из открытого доступа в просторах интернета")
+          bot.api.send_message(chat_id: user.telegram_id, text: rules_text, reply_markup: markup)
         end
       else
         puts "❔ Неизвестный тип update: #{update.class}"
