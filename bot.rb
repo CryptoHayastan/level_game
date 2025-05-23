@@ -362,10 +362,8 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
     begin
       user = find_or_update_user(update)
 
-      if user&.role == 'superadmin' || user&.role == 'shop'
-        steps(user, update, bot)
-      end
-  
+      steps(user, update, bot)
+      
       case update
       when Telegram::Bot::Types::Message
         text = update.text
