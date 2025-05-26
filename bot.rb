@@ -1201,6 +1201,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
         else
           markup = Telegram::Bot::Types::InlineKeyboardMarkup.new(
             inline_keyboard: [
+              [Telegram::Bot::Types::InlineKeyboardButton.new(text: '💬 Պարտադիր հետևել տվյալ ալիքին', url: 'https://t.me/PlanHubTM')],
               [Telegram::Bot::Types::InlineKeyboardButton.new(text: '✅ Շարունակել', callback_data: 'check_subscription')]
             ]
           )
