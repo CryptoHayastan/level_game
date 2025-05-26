@@ -1155,7 +1155,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
               if user.pending_referrer_id.present? && user.ancestry.blank?
                 referrer = User.find_by(id: user.pending_referrer_id)
 
-                if referrer && !user.ban? && user.step == 'approved' && parent_access == true
+                if referrer && !user.ban? && user.step == 'approved' && user.parent_access == true
                   user.update(ancestry: referrer.id, pending_referrer_id: nil, parent_access: false)
                   referrer.increment!(:balance, 1200)
                   referrer.increment!(:score, 1200)
