@@ -337,6 +337,19 @@ def create_promo_code(bot, user, shop_id, product_type_str)
   end
 end
 
+def format_discount(discount)
+  case discount
+  when 5
+    "0.5գ"
+  when 1
+    "1գ"
+  when 20, 50
+    "#{discount}% զեղչ"
+  else
+    "Սղալ է տեղի ունեղել"
+  end
+end
+
 Telegram::Bot::Client.run(TOKEN) do |bot|
   puts "Бот запущен..."
 
@@ -617,7 +630,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           bot.api.edit_message_text(
             chat_id: CHAT_ID,
             message_id: update.message.message_id,
-            text: "🏙 <b>Քաղաք՝</b> #{city.name}\n\n#{shop_list}",
+            text: "🏙 <b>#{city.name}</b>\n\n#{shop_list}",
             parse_mode: 'HTML',
             reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: buttons)
           )
@@ -801,7 +814,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
             if user.balance.to_i < price
             bot.api.send_message(
               chat_id: user.telegram_id,
-              text: "Ձեր միավորները բավարար չեն #{discount}% զեղչի բոնուսը ստանալու համար։ Անհրաժեշտ է #{price}, ձեր բալանսը՝ #{user.balance}։"
+              text: "Ձեր միավորները բավարար չեն #{format_discount(discount)} բոնուսը ստանալու համար։ Անհրաժեշտ է #{price}, ձեր բալանսը՝ #{user.balance}։"
             )
             next
             end
@@ -813,7 +826,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
 
             # Հաղորդագրություն օգտատիրոջը
             user_message = <<~HTML
-            Շնորհակալություն բոնուս ընտրելու համար՝ #{discount}% զեղչ! 🎉
+            Շնորհակալություն բոնուս ընտրելու համար՝ #{format_discount(discount)}! 🎉
 
             Ձեր բալանսից հանվել է #{price} LOM։
 
@@ -1142,12 +1155,12 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
               if user.pending_referrer_id.present? && user.ancestry.blank?
                 referrer = User.find_by(id: user.pending_referrer_id)
 
-                if referrer && !user.ban? && user.step == 'approved'
-                  user.update(ancestry: referrer.id, pending_referrer_id: nil)
+                if referrer && !user.ban? && user.step == 'approved' && parent_access == true
+                  user.update(ancestry: referrer.id, pending_referrer_id: nil, parent_access: false)
                   referrer.increment!(:balance, 1200)
                   referrer.increment!(:score, 1200)
 
-                    bot.api.send_message(chat_id: referrer.telegram_id, text: "🎉 Նոր օգտատեր միացավ ձեր հղումով։ Դուք ստացել եք 1200 LOM։")
+                  bot.api.send_message(chat_id: referrer.telegram_id, text: "🎉 Նոր օգտատեր միացավ ձեր հղումով։ Դուք ստացել եք 1200 LOM։")
                 end
               end
               # =========================
