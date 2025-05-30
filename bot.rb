@@ -855,24 +855,33 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
         when /^create_promo_(\d+)$/
           shop = Shop.find_by(id: $1)
           if shop && shop.user_id == user.id
+            buttons = [
+              ["0,5գ", 1],
+              ["1գ", 2],
+              ["1․5գ", 3],
+              ["2գ", 4],
+              ["2․5գ", 5],
+              ["3գ", 6],
+              ["3․5գ", 7],
+              ["4գ", 8],
+              ["4․5գ", 9],
+              ["5գ", 10]
+            ]
+
+            inline_keyboard = buttons.each_slice(3).map do |group|
+              group.map do |text, idx|
+                Telegram::Bot::Types::InlineKeyboardButton.new(
+                  text: text,
+                  callback_data: "product#{idx}_#{shop.id}"
+                )
+              end
+            end
+
             bot.api.send_message(
               chat_id: user.telegram_id,
               text: "🛍 Какой продукт?\nВыберите тип:",
               reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(
-                inline_keyboard: [
-                  [
-                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "0,5գ", callback_data: "product1_#{shop.id}"),
-                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "1գ", callback_data: "product2_#{shop.id}"),
-                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "1․5գ", callback_data: "product3_#{shop.id}"),
-                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "2գ", callback_data: "product4_#{shop.id}"),
-                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "2․5գ", callback_data: "product5_#{shop.id}"),
-                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "3գ", callback_data: "product6_#{shop.id}"),
-                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "3․5գ", callback_data: "product7_#{shop.id}"),
-                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "4գ", callback_data: "product8_#{shop.id}"),
-                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "4․5գ", callback_data: "product9_#{shop.id}"),
-                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "5գ", callback_data: "product10_#{shop.id}")
-                  ]
-                ]
+                inline_keyboard: inline_keyboard
               )
             )
           end
