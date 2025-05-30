@@ -627,9 +627,16 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
                         "❌ Այս քաղաքում խանութներ չկան։"
                       end
 
-          buttons = [
-            [Telegram::Bot::Types::InlineKeyboardButton.new(text: "🔙 Վերադառնալ քաղաքներ", callback_data: "map")]
-          ]
+          
+          if city.sub
+            buttons = [
+              [Telegram::Bot::Types::InlineKeyboardButton.new(text: "🔙 Վերադառնալ քաղաքներ", callback_data: "yerevan_map")]
+            ]
+          else
+            buttons = [
+              [Telegram::Bot::Types::InlineKeyboardButton.new(text: "🔙 Վերադառնալ քաղաքներ", callback_data: "map")]
+            ]
+          end
 
           bot.api.edit_message_text(
             chat_id: CHAT_ID,
