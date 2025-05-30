@@ -589,6 +589,28 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           else
             bot.api.send_message(chat_id: update.chat.id, text: "⛔ Օգտագործեք այս հրամանը՝ ի պատասխան այն օգտատիրոջ հաղորդագրությանը, որին ցանկանում եք արգելափակել։")
           end
+        when '/today'
+          if user&.role == 'superadmin'
+            start_of_day = Time.current.beginning_of_day
+            end_of_day = Time.current.end_of_day
+
+            stats = Shop.all.map do |shop|
+              promo_codes = shop.promo_codes
+              usages_today = PromoUsage
+                              .where(promo_code: promo_codes)
+                              .where(created_at: start_of_day..end_of_day)
+                              .count
+
+              "🛍️ #{shop.name}: #{usages_today} վաճառք"
+            end
+
+            message = stats.any? ? stats.join("\n") : "Այսօր վաճառքներ չկան։"
+
+            bot.api.send_message(
+              chat_id: update.chat.id,
+              text: "📊 Այսօրվա վաճառքները\n\n#{message}"
+            )
+          end
         else
           if update.text.present? && !update.sticker && !update.animation && !update.photo && update.chat.id == CHAT_ID
             user.add_message_point!
