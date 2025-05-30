@@ -391,12 +391,14 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
             full_name = [user.first_name, user.last_name].compact.join(' ')
             balance = user.balance || 0
 
-            info_text = <<~TEXT
+            info_text = <<~HTML
               👤 Անուն: #{full_name}
               💰 Բալանս: #{balance} LOM
 
+              🔗 Ձեր հրավիրելու հղումը <code>https://t.me/PLANhuBot?start=#{user.telegram_id}</code>
+
               Ընտրեք գործողություն 👇
-            TEXT
+            HTML
 
             kb = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: [
               [Telegram::Bot::Types::InlineKeyboardButton.new(text: '🔤 Մուտքագրել պրոմոկոդ', callback_data: 'enter_promo')],
@@ -405,7 +407,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
               [Telegram::Bot::Types::InlineKeyboardButton.new(text: '💬 Մուտք գործել չաթ', url: 'https://t.me/+H3V09Qh9t701YzVh')]
             ])
 
-            bot.api.send_message(chat_id: user.telegram_id, text: info_text.strip, reply_markup: kb)
+            bot.api.send_message(chat_id: user.telegram_id, text: info_text.strip, parse_mode: "HTML", reply_markup: kb)
           end
 
         when /^\/start (\d+)$/
@@ -439,7 +441,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           user_info = <<~HTML
             👤 Անուն: #{safe_telegram_name(update.from)}
             💰 Բալանս: #{user.balance} LOM
-            🔗 Ձեր հրավիրելու հղումը <code>https://t.me/PLANhuBot?start=#{user.telegram_id}</code>
+
             👥 Ռեֆերալներ: #{referrals_count}
             🛒 Գնումներ: #{purchases_count}
 
