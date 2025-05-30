@@ -1,6 +1,16 @@
 require 'telegram/bot'
 require_relative 'config/environment'
 require 'rufus-scheduler'
+require 'fileutils'
+
+LOCK_FILE = 'bot.lock'
+
+if File.exist?(LOCK_FILE)
+  puts "Бот уже запущен!"
+  exit
+else
+  FileUtils.touch(LOCK_FILE)
+end
 
 TOKEN = ENV['TELEGRAM_BOT_TOKEN']
 CHANNEL = '@PlanHubTM'
@@ -1368,4 +1378,8 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
       puts "🔥 Ошибка: #{e.message}"
     end
   end
+end
+
+at_exit do
+  FileUtils.rm_f(LOCK_FILE)
 end
