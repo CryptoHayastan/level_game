@@ -291,25 +291,44 @@ def steps(user, update, bot)
 end
 
 def create_promo_code(bot, user, shop_id, product_type_str)
-  # ОБЯЗАТЕЛЬНО передаём аргумент (например, 8)
-  promo_code = "#{shop_id}:#{product_type_str}:#{SecureRandom.hex(8)}"
+  product_type = product_type_str.to_i
+
+  product_names = {
+    1 => "0,5գ",
+    2 => "1գ",
+    3 => "1․5գ",
+    4 => "2գ",
+    5 => "2․5գ",
+    6 => "3գ",
+    7 => "3․5գ",
+    8 => "4գ",
+    9 => "4․5գ",
+    10 => "5գ"
+  }
+
+  product_name = product_names[product_type] || "Անհայտ"
+
+  promo_code = "#{shop_id}:#{product_type}:#{SecureRandom.hex(8)}"
+
   begin
-    # Твой код, например:
     expires_at = 2.hours.from_now
     promo = PromoCode.create!(
       code: promo_code,
       shop_id: shop_id,
-      product_type: product_type_str == 1 ? 1 : 2,
+      product_type: product_type,
       expires_at: expires_at
     )
   rescue => e
     puts "🔥 Ошибка: #{e.message}"
     puts e.backtrace.join("\n")
+    bot.api.send_message(
+      chat_id: user.telegram_id,
+      text: "❌ Սխալ տեղի ունեցավ։"
+    )
+    return
   end
 
   if promo.persisted?
-    product_name = product_type_str == 1 ? "0,5" : "1"
-
     message = <<~TEXT
       🔤 Կոդ՝ `#{promo_code}`
       ⏳ Վավեր է՝ 2 ժամ
@@ -326,16 +345,17 @@ def create_promo_code(bot, user, shop_id, product_type_str)
 
     bot.api.send_message(
       chat_id: user.telegram_id,
-      text: "#{message}",
+      text: message,
       parse_mode: 'Markdown'
     )
   else
     bot.api.send_message(
       chat_id: user.telegram_id,
-      text: "❌ Ошибка при создании промокода."
+      text: "❌ Սխալ ստեղծման ժամանակ։"
     )
   end
 end
+
 
 def format_discount(discount)
   case discount
@@ -841,8 +861,16 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
               reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(
                 inline_keyboard: [
                   [
-                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "0,5", callback_data: "product1_#{shop.id}"),
-                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "1", callback_data: "product2_#{shop.id}")
+                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "0,5գ", callback_data: "product1_#{shop.id}"),
+                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "1գ", callback_data: "product2_#{shop.id}"),
+                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "1․5գ", callback_data: "product3_#{shop.id}"),
+                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "2գ", callback_data: "product4_#{shop.id}"),
+                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "2․5գ", callback_data: "product5_#{shop.id}"),
+                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "3գ", callback_data: "product6_#{shop.id}"),
+                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "3․5գ", callback_data: "product7_#{shop.id}"),
+                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "4գ", callback_data: "product8_#{shop.id}"),
+                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "4․5գ", callback_data: "product9_#{shop.id}"),
+                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "5գ", callback_data: "product10_#{shop.id}")
                   ]
                 ]
               )
@@ -856,6 +884,30 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
         when /^product2_\d+$/
           shop_id = data.split('_').last.to_i
           create_promo_code(bot, user, shop_id, 2)
+        when /^product3_\d+$/
+          shop_id = data.split('_').last.to_i
+          create_promo_code(bot, user, shop_id, 3)
+        when /^product4_\d+$/
+          shop_id = data.split('_').last.to_i
+          create_promo_code(bot, user, shop_id, 4)
+        when /^product5_\d+$/
+          shop_id = data.split('_').last.to_i
+          create_promo_code(bot, user, shop_id, 5)
+        when /^product6_\d+$/
+          shop_id = data.split('_').last.to_i
+          create_promo_code(bot, user, shop_id, 6)
+        when /^product7_\d+$/
+          shop_id = data.split('_').last.to_i
+          create_promo_code(bot, user, shop_id, 7)
+        when /^product8_\d+$/
+          shop_id = data.split('_').last.to_i
+          create_promo_code(bot, user, shop_id, 8)
+        when /^product9_\d+$/
+          shop_id = data.split('_').last.to_i
+          create_promo_code(bot, user, shop_id, 9)
+        when /^product10_\d+$/
+          shop_id = data.split('_').last.to_i
+          create_promo_code(bot, user, shop_id, 10)
         when /^bonus_(\d+)$/
           discount = $1.to_i  # 50, 20 или 5
 
