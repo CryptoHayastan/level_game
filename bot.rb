@@ -841,16 +841,8 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
               reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(
                 inline_keyboard: [
                   [
-                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "0,5գ", callback_data: "product1_#{shop.id}"),
-                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "1գ", callback_data: "product2_#{shop.id}"),
-                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "1․5գ", callback_data: "product3_#{shop.id}"),
-                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "2գ", callback_data: "product4_#{shop.id}"),
-                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "2․5գ", callback_data: "product5_#{shop.id}"),
-                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "3գ", callback_data: "product6_#{shop.id}"),
-                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "3․5գ", callback_data: "product7_#{shop.id}"),
-                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "4գ", callback_data: "product8_#{shop.id}"),
-                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "4․5գ", callback_data: "product9_#{shop.id}"),
-                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "5գ", callback_data: "product10_#{shop.id}")
+                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "0,5", callback_data: "product1_#{shop.id}"),
+                    Telegram::Bot::Types::InlineKeyboardButton.new(text: "1", callback_data: "product2_#{shop.id}")
                   ]
                 ]
               )
@@ -864,30 +856,6 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
         when /^product2_\d+$/
           shop_id = data.split('_').last.to_i
           create_promo_code(bot, user, shop_id, 2)
-        when /^product3_\d+$/
-          shop_id = data.split('_').last.to_i
-          create_promo_code(bot, user, shop_id, 3)
-        when /^product4_\d+$/
-          shop_id = data.split('_').last.to_i
-          create_promo_code(bot, user, shop_id, 4)
-        when /^product5_\d+$/
-          shop_id = data.split('_').last.to_i
-          create_promo_code(bot, user, shop_id, 5)
-        when /^product6_\d+$/
-          shop_id = data.split('_').last.to_i
-          create_promo_code(bot, user, shop_id, 6)
-        when /^product7_\d+$/
-          shop_id = data.split('_').last.to_i
-          create_promo_code(bot, user, shop_id, 7)
-        when /^product8_\d+$/
-          shop_id = data.split('_').last.to_i
-          create_promo_code(bot, user, shop_id, 8)
-        when /^product9_\d+$/
-          shop_id = data.split('_').last.to_i
-          create_promo_code(bot, user, shop_id, 9)
-        when /^product10_\d+$/
-          shop_id = data.split('_').last.to_i
-          create_promo_code(bot, user, shop_id, 10)
         when /^bonus_(\d+)$/
           discount = $1.to_i  # 50, 20 или 5
 
