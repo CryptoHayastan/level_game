@@ -1117,9 +1117,8 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
 
               bot.api.send_message(
                 chat_id: user.telegram_id,
-                text: "👤 Владелец: ",
-                reply_markup: markup,
-                parse_mode: 'Markdown'
+                text: "👤 Владелец: @#{shop.link}",
+                reply_markup: markup
               )
             end
           else
