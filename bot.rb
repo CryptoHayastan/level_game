@@ -1096,8 +1096,6 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           
         when 'list_shops'
           shops = Shop.includes(:user).all
-          chat_id = update.from&.id
-          return unless chat_id
 
           if shops.any?
             shops.each do |shop|
@@ -1110,14 +1108,14 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
               markup = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: kb)
 
               bot.api.send_message(
-                chat_id: chat_id,
+                chat_id: user.telegram_id,
                 text: shop_text,
                 reply_markup: markup,
                 parse_mode: 'Markdown'
               )
             end
           else
-            bot.api.send_message(chat_id: chat_id, text: "❌ Магазины не найдены.")
+            bot.api.send_message(chat_id: user.telegram_id, text: "❌ Магазины не найдены.")
           end
         
         when 'yerevan_map'
