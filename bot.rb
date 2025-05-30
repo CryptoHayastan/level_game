@@ -395,7 +395,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
               👤 Անուն: #{full_name}
               💰 Բալանս: #{balance} LOM
 
-              🔗 Ձեր հրավիրելու հղումը </br><code>https://t.me/PLANhuBot?start=#{user.telegram_id}</code>
+              🔗 Ձեր հրավիրելու հղումը <code>https://t.me/PLANhuBot?start=#{user.telegram_id}</code>
 
               Ընտրեք գործողություն 👇
             HTML
