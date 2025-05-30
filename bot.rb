@@ -489,10 +489,10 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
 
             if shop
               shop_info = <<~TEXT
-                🏪 Խանութ․ #{shop.name}
-                🔗 Հղում․ @#{shop.link}
-                📶 Կարգավիճակ․ #{shop.online ? '🟢 Օնլայն' : '🔴 Օֆլայն'}
-                🏙 Քաղաքներ․ #{shop.cities.map(&:name).join(', ')}
+                🏪 Խանութ - #{shop.name}
+                🔗 Հղում - @#{shop.link}
+                📶 Կարգավիճակ - #{shop.online ? '🟢 Օնլայն' : '🔴 Օֆլայն'}
+                🏙 Քաղաքներ - #{shop.cities.map(&:name).join(', ')}
               TEXT
 
               toggle_button = Telegram::Bot::Types::InlineKeyboardButton.new(
@@ -878,7 +878,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
             end
 
             bot.api.send_message(
-              user.telegram_id,
+              chat_id: user.telegram_id,
               text: "🛍 Ո՞ր ապրանքն է։\nԸնտրեք տեսակը՝",
               reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(
                 inline_keyboard: inline_keyboard
