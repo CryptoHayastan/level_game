@@ -291,44 +291,25 @@ def steps(user, update, bot)
 end
 
 def create_promo_code(bot, user, shop_id, product_type_str)
-  product_type = product_type_str.to_i
-
-  product_names = {
-    1 => "0,5գ",
-    2 => "1գ",
-    3 => "1․5գ",
-    4 => "2գ",
-    5 => "2․5գ",
-    6 => "3գ",
-    7 => "3․5գ",
-    8 => "4գ",
-    9 => "4․5գ",
-    10 => "5գ"
-  }
-
-  product_name = product_names[product_type] || "Անհայտ"
-
-  promo_code = "#{shop_id}:#{product_type}:#{SecureRandom.hex(8)}"
-
+  # ОБЯЗАТЕЛЬНО передаём аргумент (например, 8)
+  promo_code = "#{shop_id}:#{product_type_str}:#{SecureRandom.hex(8)}"
   begin
+    # Твой код, например:
     expires_at = 2.hours.from_now
     promo = PromoCode.create!(
       code: promo_code,
       shop_id: shop_id,
-      product_type: product_type,
+      product_type: product_type_str == 1 ? 1 : 2,
       expires_at: expires_at
     )
   rescue => e
     puts "🔥 Ошибка: #{e.message}"
     puts e.backtrace.join("\n")
-    bot.api.send_message(
-      chat_id: user.telegram_id,
-      text: "❌ Սխալ տեղի ունեցավ։"
-    )
-    return
   end
 
   if promo.persisted?
+    product_name = product_type_str == 1 ? "0,5" : "1"
+
     message = <<~TEXT
       🔤 Կոդ՝ `#{promo_code}`
       ⏳ Վավեր է՝ 2 ժամ
@@ -345,13 +326,13 @@ def create_promo_code(bot, user, shop_id, product_type_str)
 
     bot.api.send_message(
       chat_id: user.telegram_id,
-      text: message,
+      text: "#{message}",
       parse_mode: 'Markdown'
     )
   else
     bot.api.send_message(
       chat_id: user.telegram_id,
-      text: "❌ Սխալ ստեղծման ժամանակ։"
+      text: "❌ Ошибка при создании промокода."
     )
   end
 end
