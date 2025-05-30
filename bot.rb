@@ -115,7 +115,7 @@ def collect_daily_bonus(user, bot, telegram_id, callback_query)
   user_info = <<~HTML
     Անուն: #{safe_telegram_name(callback_query.from)}
     Բալանս: #{user.balance} LOM
-    🔗 Ձեր հրավիրելու հղումը <code>https://t.me/PLANhuBot?start=#{user.telegram_id}</code>
+    
     👥 Ռեֆերալներ: #{referrals_count}
     🛒 Գնումներ: #{purchases_count}
 
