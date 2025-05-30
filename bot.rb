@@ -375,6 +375,8 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
     begin
       user = find_or_update_user(update)
 
+      admin_user?(bot, CHAT_ID, user.telegram_id)
+
       steps(user, update, bot)
       
       case update
@@ -573,7 +575,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           if update.reply_to_message
             chat_id = update.chat.id
 
-            if user&.role == 'superadmin'
+            if user&.role == 'superadmin' || admin_user?(bot, CHAT_ID, user.telegram_id)
               target_id = update.reply_to_message.from.id
               begin
                 bot.api.banChatMember(chat_id: chat_id, user_id: target_id)
