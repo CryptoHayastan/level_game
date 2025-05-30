@@ -1095,27 +1095,29 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           bot.api.send_message(chat_id: user.telegram_id, text: "👤 Введите username пользователя для нового магазина: \\n Или напишите /cancel чтобы отменить")
           
         when 'list_shops'
-          shops = Shop.all
+          shops = Shop.includes(:user).all
+          chat_id = update.from&.id
+          return unless chat_id
+
           if shops.any?
             shops.each do |shop|
-              shop_text = "🏪 Магазин: *#{shop.name}*\n👤 Владелец: @#{User.find(shop.user_id)&.username || 'не найден'}"
+              owner_username = shop.user&.username || 'не найден'
+              shop_text = "🏪 Магазин: *#{shop.name}*\n👤 Владелец: @#{owner_username}"
 
               kb = [
-                [
-                  Telegram::Bot::Types::InlineKeyboardButton.new(text: '🗑 Удалить', callback_data: "delete_shop_#{shop.id}")
-                ]
+                [Telegram::Bot::Types::InlineKeyboardButton.new(text: '🗑 Удалить', callback_data: "delete_shop_#{shop.id}")]
               ]
               markup = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: kb)
 
               bot.api.send_message(
-                chat_id: update.from.id,
+                chat_id: chat_id,
                 text: shop_text,
                 reply_markup: markup,
                 parse_mode: 'Markdown'
               )
             end
           else
-            bot.api.send_message(chat_id: update.from.id, text: "❌ Магазины не найдены.")
+            bot.api.send_message(chat_id: chat_id, text: "❌ Магазины не найдены.")
           end
         
         when 'yerevan_map'
