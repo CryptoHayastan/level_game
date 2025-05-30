@@ -489,14 +489,14 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
 
             if shop
               shop_info = <<~TEXT
-                Магазин: #{shop.name}
-                Link: #{shop.link}
-                Статус: #{shop.online ? '🟢 Онлайн' : '🔴 Оффлайн'}
-                Города: #{shop.cities.map(&:name).join(', ')}
+                🏪 Խանութ․ #{shop.name}
+                🔗 Հղում․ @#{shop.link}
+                📶 Կարգավիճակ․ #{shop.online ? '🟢 Օնլայն' : '🔴 Օֆլայն'}
+                🏙 Քաղաքներ․ #{shop.cities.map(&:name).join(', ')}
               TEXT
 
               toggle_button = Telegram::Bot::Types::InlineKeyboardButton.new(
-                text: shop.online ? '🔴 Отключить онлайн' : '🟢 Включить онлайн',
+                text: shop.online ? '🔴 Անջատել Օնլայնը' : '🟢 Միացնել Օնլայնը',
                 callback_data: "toggle_online_#{shop.id}"
               )
 
@@ -506,8 +506,8 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
                 reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(
                   inline_keyboard: [
                     [toggle_button],
-                    [Telegram::Bot::Types::InlineKeyboardButton.new(text: '📍 Управлять городами', callback_data: "edit_cities_#{shop.id}")],
-                    [Telegram::Bot::Types::InlineKeyboardButton.new(text: '🎟 Создать промокод', callback_data: "create_promo_#{shop.id}")]
+                    [Telegram::Bot::Types::InlineKeyboardButton.new(text: '📍 Քաղաքների կառավարում', callback_data: "edit_cities_#{shop.id}")],
+                    [Telegram::Bot::Types::InlineKeyboardButton.new(text: '🎟 Ստեղծել պրոմոկոդ', callback_data: "create_promo_#{shop.id}")]
                   ]
                 )
               )
@@ -856,15 +856,15 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           shop = Shop.find_by(id: $1)
           if shop && shop.user_id == user.id
             buttons = [
-              ["0,5գ", 1],
+              ["0.5գ", 1],
               ["1գ", 2],
-              ["1․5գ", 3],
+              ["1.5գ", 3],
               ["2գ", 4],
-              ["2․5գ", 5],
+              ["2.5գ", 5],
               ["3գ", 6],
-              ["3․5գ", 7],
+              ["3.5գ", 7],
               ["4գ", 8],
-              ["4․5գ", 9],
+              ["4.5գ", 9],
               ["5գ", 10]
             ]
 
@@ -878,8 +878,8 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
             end
 
             bot.api.send_message(
-              chat_id: user.telegram_id,
-              text: "🛍 Какой продукт?\nВыберите тип:",
+              user.telegram_id,
+              text: "🛍 Ո՞ր ապրանքն է։\nԸնտրեք տեսակը՝",
               reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(
                 inline_keyboard: inline_keyboard
               )
