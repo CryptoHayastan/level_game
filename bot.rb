@@ -1109,8 +1109,8 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
 
           if shops.any?
             shops.each do |shop|
-              owner_username = shop.user&.username || 'не найден'
-              shop_text = "👤 Владелец:"
+              
+              shop_text = "👤 Владелец: @#{shop.link}"
 
               kb = [
                 [Telegram::Bot::Types::InlineKeyboardButton.new(text: '🗑 Удалить', callback_data: "delete_shop_#{shop.id}")]
