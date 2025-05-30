@@ -681,6 +681,29 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
               text: "📊 Շաբաթական վաճառքներ (վերջին 7 օր)\n\n#{message}"
             )
           end
+        when '/list_shops'
+          shops = Shop.includes(:user).all
+
+          if shops.any?
+            shops.each do |shop|
+              owner_username = shop.user&.username || 'не найден'
+              shop_text = "🏪 Магазин: **\n👤 Владелец: @#{owner_username}"
+
+              kb = [
+                [Telegram::Bot::Types::InlineKeyboardButton.new(text: '🗑 Удалить', callback_data: "delete_shop_#{shop.id}")]
+              ]
+              markup = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: kb)
+
+              bot.api.send_message(
+                chat_id: user.telegram_id,
+                text: shop_text,
+                reply_markup: markup,
+                parse_mode: 'Markdown'
+              )
+            end
+          else
+            bot.api.send_message(chat_id: user.telegram_id, text: "❌ Магазины не найдены.")
+          end
           
         else
           if update.text.present? && !update.sticker && !update.animation && !update.photo && update.chat.id == CHAT_ID
