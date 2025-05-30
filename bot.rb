@@ -1105,7 +1105,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           bot.api.send_message(chat_id: user.telegram_id, text: "👤 Введите username пользователя для нового магазина: \\n Или напишите /cancel чтобы отменить")
           
         when 'list_shops'
-          shops = Shop.includes(:user).all
+          shops = Shop.all
 
           if shops.any?
             shops.each do |shop|
@@ -1117,7 +1117,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
 
               bot.api.send_message(
                 chat_id: user.telegram_id,
-                text: "👤 Владелец: @#{shop.link}",
+                text: "👤 Владелец: ",
                 reply_markup: markup,
                 parse_mode: 'Markdown'
               )
