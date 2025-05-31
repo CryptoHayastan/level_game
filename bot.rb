@@ -318,68 +318,71 @@ def steps(user, update, bot)
 end
 
 def create_promo_code(bot, user, shop_id, product_type_str)
-  product_type = product_type_str.to_i
 
-  product_names = {
-    1 => "0,5գ",
-    2 => "1գ",
-    3 => "1․5գ",
-    4 => "2գ",
-    5 => "2․5գ",
-    6 => "3գ",
-    7 => "3․5գ",
-    8 => "4գ",
-    9 => "4․5գ",
-    10 => "5գ"
-  }
+  if user.role == 'shop'
+    product_type = product_type_str.to_i
 
-  product_name = product_names[product_type] || "Անհայտ"
+    product_names = {
+      1 => "0,5գ",
+      2 => "1գ",
+      3 => "1․5գ",
+      4 => "2գ",
+      5 => "2․5գ",
+      6 => "3գ",
+      7 => "3․5գ",
+      8 => "4գ",
+      9 => "4․5գ",
+      10 => "5գ"
+    }
 
-  promo_code = "#{shop_id}:#{product_type}:#{SecureRandom.hex(8)}"
+    product_name = product_names[product_type] || "Անհայտ"
 
-  begin
-    expires_at = 2.hours.from_now
-    promo = PromoCode.create!(
-      code: promo_code,
-      shop_id: shop_id,
-      product_type: product_type,
-      expires_at: expires_at
-    )
-  rescue => e
-    puts "🔥 Ошибка: #{e.message}"
-    puts e.backtrace.join("\n")
-    bot.api.send_message(
-      chat_id: user.telegram_id,
-      text: "❌ Սխալ տեղի ունեցավ։"
-    )
-    return
-  end
+    promo_code = "#{shop_id}:#{product_type}:#{SecureRandom.hex(8)}"
 
-  if promo.persisted?
-    message = <<~TEXT
-      🔤 Կոդ՝ `#{promo_code}`
-      ⏳ Վավեր է՝ 2 ժամ
-      🎯 Տեսակ՝ #{product_name}
+    begin
+      expires_at = 2.hours.from_now
+      promo = PromoCode.create!(
+        code: promo_code,
+        shop_id: shop_id,
+        product_type: product_type,
+        expires_at: expires_at
+      )
+    rescue => e
+      puts "🔥 Ошибка: #{e.message}"
+      puts e.backtrace.join("\n")
+      bot.api.send_message(
+        chat_id: user.telegram_id,
+        text: "❌ Սխալ տեղի ունեցավ։"
+      )
+      return
+    end
 
-      📥 Ինչպես օգտագործել․
-      1. Բացիր բոտը 👉 [@PLANhuBot](https://t.me/PLANhuBot)
-      2. Սեղմիր **«Start»** կամ ուղարկիր հրամանը `/start`
-      3. Մուտքագրիր քո կոդը՝ `#{promo_code}`
-      4. Ստացիր բոնուսներ կամ հատուկ առաջարկներ 🎁
+    if promo.persisted?
+      message = <<~TEXT
+        🔤 Կոդ՝ `#{promo_code}`
+        ⏳ Վավեր է՝ 2 ժամ
+        🎯 Տեսակ՝ #{product_name}
 
-      ⏰ Ուշադրություն․ Կոդը հասանելի է միայն 2 ժամ։ Մի ուշացիր օգտագործել։
-    TEXT
+        📥 Ինչպես օգտագործել․
+        1. Բացիր բոտը 👉 [@PLANhuBot](https://t.me/PLANhuBot)
+        2. Սեղմիր **«Start»** կամ ուղարկիր հրամանը `/start`
+        3. Մուտքագրիր քո կոդը՝ `#{promo_code}`
+        4. Ստացիր բոնուսներ կամ հատուկ առաջարկներ 🎁
 
-    bot.api.send_message(
-      chat_id: user.telegram_id,
-      text: message,
-      parse_mode: 'Markdown'
-    )
-  else
-    bot.api.send_message(
-      chat_id: user.telegram_id,
-      text: "❌ Սխալ ստեղծման ժամանակ։"
-    )
+        ⏰ Ուշադրություն․ Կոդը հասանելի է միայն 2 ժամ։ Մի ուշացիր օգտագործել։
+      TEXT
+
+      bot.api.send_message(
+        chat_id: user.telegram_id,
+        text: message,
+        parse_mode: 'Markdown'
+      )
+    else
+      bot.api.send_message(
+        chat_id: user.telegram_id,
+        text: "❌ Սխալ ստեղծման ժամանակ։"
+      )
+    end
   end
 end
 
