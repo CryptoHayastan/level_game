@@ -58,7 +58,7 @@ def admin_user?(bot, chat_id, user_id)
     if is_admin
       user = User.find_by(telegram_id: user_id)
       if user && user.role != 'admin'
-        if user.role != 'superadmin'
+        if user.role != 'superadmin' && user.role != 'shop'
           user.update(role: 'admin')
         end
       end
