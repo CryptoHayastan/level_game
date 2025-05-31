@@ -622,7 +622,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           if update.reply_to_message
             chat_id = update.chat.id
 
-            if user&.role == 'superadmin' || admin_user?(bot, CHAT_ID, user.telegram_id)
+            if user&.role == 'superadmin' || admin_user?(bot, CHAT_ID, user.telegram_id) || user&.role == 'shop'
               target_id = update.reply_to_message.from.id
               begin
                 bot.api.banChatMember(chat_id: chat_id, user_id: target_id)
