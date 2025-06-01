@@ -548,8 +548,10 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           end
 
         when '/kap'
-          shops_online = Shop.where(online: true)
-          shops_offline = Shop.where(online: false)
+          excluded_links = %w[PABLO_COM Rick_Yerevan ProfessorElina HighKap]
+
+          shops_online = Shop.where(online: true).where.not(link: excluded_links)
+          shops_offline = Shop.where(online: false).where.not(link: excluded_links)
 
           text = "<b>🛍 Հարթակում վստահված Խանութների հղումները՝</b>\n\n"
 
