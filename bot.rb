@@ -1096,7 +1096,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           else
             bot.api.send_message(chat_id: chat_id, text: "Пользователь не найден или нет доступа.")
           end
-          
+
         when /^promos_(day|week)_(\d+)$/
           period, shop_id = $1, $2.to_i
           shop = Shop.find_by(id: shop_id)
@@ -1111,10 +1111,24 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
 
             promos = PromoCode.where(shop_id: shop.id, created_at: time_range)
 
+            product_names = {
+              1 => "0,5գ",
+              2 => "1գ",
+              3 => "1․5գ",
+              4 => "2գ",
+              5 => "2․5գ",
+              6 => "3գ",
+              7 => "3․5գ",
+              8 => "4գ",
+              9 => "4․5գ",
+              10 => "5գ"
+            }
+
             if promos.any?
               text = "🛍 Промокоды за #{period == 'day' ? 'день' : 'неделю'}:\n\n"
               promos.each do |promo|
-                text += "🔸 #{promo.code} | #{promo.product_type_str}\n🕒 #{promo.created_at.strftime('%d.%m %H:%M')}\n\n"
+                product_name = product_names[promo.product_type] || "Неизвестно"
+                text += "🔸 #{promo.code} | #{product_name}\n🕒 #{promo.created_at.strftime('%d.%m %H:%M')}\n\n"
               end
             else
               text = "⚠️ За выбранный период промокоды не найдены."
@@ -1132,7 +1146,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
 
         when 'add_city'
           user.update(step: 'awaiting_new_city_name')
-          bot.api.send_message(chat_id: user.telegram_id, text: "Введите название нового города для общего списка:")
+            bot.api.send_message(chat_id: user.telegram_id, text: "Մուտքագրեք նոր քաղաքի անունը՝ ընդհանուր ցանկի համար։")
 
         when 'add_shop'
           user.update(step: 'awaiting_username_for_shop')
