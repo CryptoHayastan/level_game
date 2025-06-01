@@ -1096,6 +1096,34 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           else
             bot.api.send_message(chat_id: chat_id, text: "Пользователь не найден или нет доступа.")
           end
+          
+        when /^promos_(day|week)_(\d+)$/
+          period, shop_id = $1, $2.to_i
+          shop = Shop.find_by(id: shop_id)
+
+          if shop
+            time_range = case period
+                        when 'day'
+                          1.day.ago..Time.current
+                        when 'week'
+                          1.week.ago..Time.current
+                        end
+
+            promos = PromoCode.where(shop_id: shop.id, created_at: time_range)
+
+            if promos.any?
+              text = "🛍 Промокоды за #{period == 'day' ? 'день' : 'неделю'}:\n\n"
+              promos.each do |promo|
+                text += "🔸 #{promo.code} | #{promo.product_type_str}\n🕒 #{promo.created_at.strftime('%d.%m %H:%M')}\n\n"
+              end
+            else
+              text = "⚠️ За выбранный период промокоды не найдены."
+            end
+
+            bot.api.send_message(chat_id: user.telegram_id, text: text)
+          else
+            bot.api.send_message(chat_id: user.telegram_id, text: "❌ Магазин не найден.")
+          end
 
         when 'enter_promo'
           user.update(step: 'waiting_for_promo_code')
@@ -1115,15 +1143,22 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
 
           if shops.any?
             shops.each do |shop|
+              promo_count = PromoCode.where(shop_id: shop.id).count
 
               kb = [
-                [Telegram::Bot::Types::InlineKeyboardButton.new(text: '🗑 Удалить', callback_data: "delete_shop_#{shop.id}")]
+                [
+                  Telegram::Bot::Types::InlineKeyboardButton.new(text: '🗑 Удалить', callback_data: "delete_shop_#{shop.id}")
+                ],
+                [
+                  Telegram::Bot::Types::InlineKeyboardButton.new(text: '📅 За день', callback_data: "promos_day_#{shop.id}"),
+                  Telegram::Bot::Types::InlineKeyboardButton.new(text: '🗓 За неделю', callback_data: "promos_week_#{shop.id}")
+                ]
               ]
               markup = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: kb)
 
               bot.api.send_message(
                 chat_id: user.telegram_id,
-                text: "👤 Владелец: @#{shop.link}",
+                text: "👤 Владелец: @#{shop.link}\n🔢 Промокодов: #{promo_count}",
                 reply_markup: markup
               )
             end
