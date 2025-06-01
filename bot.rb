@@ -102,6 +102,9 @@ def collect_daily_bonus(user, bot, telegram_id, callback_query)
     daily_bonus.bonus_day = 0
   end
 
+  # сброс после 10 дня
+  daily_bonus.bonus_day = 0 if daily_bonus.bonus_day >= 10
+
   daily_bonus.bonus_day += 1
   daily_bonus.last_collected_at = now
   reward = daily_bonus.bonus_day * 100
