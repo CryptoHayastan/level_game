@@ -548,7 +548,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           end
 
         when '/kap'
-          excluded_links = %w[PABLO_COM Rick_Yerevan HighKap]
+          excluded_links = %w[PABLO_COM HighKap]
 
           shops_online = Shop.where(online: true).where.not(link: excluded_links)
           shops_offline = Shop.where(online: false).where.not(link: excluded_links)
@@ -709,6 +709,8 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
         when /^city_/
           bot.api.answer_callback_query(callback_query_id: update.id)
 
+          excluded_links = %w[PABLO_COM HighKap]
+
           city_id = update.data.split('_').last.to_i
           city = City.find_by(id: city_id)
 
@@ -717,7 +719,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
             return
           end
 
-          shops = city.shops
+          shops = city.shops.where.not(link: excluded_links)
 
           shop_list = if shops.any?
                         shops.map do |shop|
@@ -727,6 +729,12 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
                       else
                         "❌ Այս քաղաքում խանութներ չկան։"
                       end
+
+          bot.api.send_message(
+            chat_id: update.from.id,
+            text: "<b>#{city.name} Քաղաքի խանութներ</b>\n\n#{shop_list}",
+            parse_mode: 'HTML'
+          )
 
           
           if city.sub
