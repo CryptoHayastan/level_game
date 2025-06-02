@@ -548,7 +548,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           end
 
         when '/kap'
-          excluded_links = %w[PABLO_COM Rick_Yerevan ProfessorElina HighKap]
+          excluded_links = %w[PABLO_COM Rick_Yerevan HighKap]
 
           shops_online = Shop.where(online: true).where.not(link: excluded_links)
           shops_offline = Shop.where(online: false).where.not(link: excluded_links)
