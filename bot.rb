@@ -702,6 +702,10 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
             purchases = PromoUsage.where(user_id: target_user.id).count
             referrals = User.where(pending_referrer_id: target_user.id).count
 
+            buttons = []
+            buttons << [{ text: "🧒 Рефералы", callback_data: "show_children:#{target_user.id}" }]
+            buttons << [{ text: "👨‍👩‍👦 Родитель", callback_data: "show_parent:#{target_user.id}" }] if target_user.parent
+
             bot.api.send_message(
               chat_id: user.telegram_id,
               text: <<~TEXT,
@@ -716,7 +720,10 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
                 🛍️ Покупок: #{purchases}
                 🧑‍🤝‍🧑 Рефералов: #{referrals}
               TEXT
-              parse_mode: 'Markdown'
+              parse_mode: 'Markdown',
+              reply_markup: {
+                inline_keyboard: buttons
+              }
             )
           else
             bot.api.send_message(chat_id: user.telegram_id, text: "❌ Пользователь не найден.")
@@ -1180,6 +1187,41 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           else
             bot.api.send_message(chat_id: user.telegram_id, text: "❌ Магазин не найден.")
           end
+        
+        when /^show_children:(\d+)$/
+          user_id = $1.to_i
+          parent_user = User.find_by(id: user_id)
+          children = parent_user&.children
+
+          if children&.any?
+            text = "👶 *Рефералы пользователя #{parent_user.first_name}*:\n\n"
+            text += children.map.with_index(1) do |child, i|
+              "#{i}. #{child.first_name} #{child.last_name} (@#{child.username})"
+            end.join("\n")
+          else
+            text = "ℹ️ У этого пользователя нет рефералов."
+          end
+
+          bot.api.send_message(chat_id: user.telegram_id, text: text, parse_mode: "Markdown")
+
+        when /^show_parent:(\d+)$/
+          user_id = $1.to_i
+          child_user = User.find_by(id: user_id)
+          parent = child_user&.parent
+
+          if parent
+            text = <<~TEXT
+              👨‍👦 *Родитель:*
+
+              🙍‍♂️ Имя: #{parent.first_name}
+              🙍‍♀️ Фамилия: #{parent.last_name}
+              🧑‍💻 Username: @#{parent.username}
+            TEXT
+          else
+            text = "ℹ️ Родитель не найден."
+          end
+
+          bot.api.send_message(chat_id: user.telegram_id, text: text, parse_mode: "Markdown")
 
         when 'enter_promo'
           user.update(step: 'waiting_for_promo_code')
