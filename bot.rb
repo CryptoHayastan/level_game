@@ -702,9 +702,25 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
             purchases = PromoUsage.where(user_id: target_user.id).count
             referrals = User.where(pending_referrer_id: target_user.id).count
 
+            # Создаём кнопки с использованием Telegram::Bot::Types
             buttons = []
-            buttons << [{ text: "🧒 Рефералы", callback_data: "show_children:#{target_user.id}" }]
-            buttons << [{ text: "👨‍👩‍👦 Родитель", callback_data: "show_parent:#{target_user.id}" }] if target_user.parent
+
+            buttons << Telegram::Bot::Types::InlineKeyboardButton.new(
+              text: "🧒 Рефералы",
+              callback_data: "show_children:#{target_user.id}"
+            )
+
+            if target_user.parent
+              buttons << Telegram::Bot::Types::InlineKeyboardButton.new(
+                text: "👨‍👩‍👦 Родитель",
+                callback_data: "show_parent:#{target_user.id}"
+              )
+            end
+
+            # Создаём клавиатуру
+            keyboard = Telegram::Bot::Types::InlineKeyboardMarkup.new(
+              inline_keyboard: buttons.each_slice(2).to_a # максимум 2 кнопки в строке
+            )
 
             bot.api.send_message(
               chat_id: user.telegram_id,
@@ -721,9 +737,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
                 🧑‍🤝‍🧑 Рефералов: #{referrals}
               TEXT
               parse_mode: 'Markdown',
-              reply_markup: {
-                inline_keyboard: buttons
-              }
+              reply_markup: keyboard
             )
           else
             bot.api.send_message(chat_id: user.telegram_id, text: "❌ Пользователь не найден.")
