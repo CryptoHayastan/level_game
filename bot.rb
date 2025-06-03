@@ -689,6 +689,38 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
               text: "📊 Շաբաթական վաճառքներ (վերջին 7 օր)\n\n#{message}"
             )
           end
+        
+        when /^\/whois (.+)/
+          query = message.text.gsub('/whois ', '').strip.downcase
+
+          user = User.where(
+            "LOWER(first_name) = :q OR LOWER(last_name) = :q OR LOWER(username) = :q OR telegram_id::text = :raw_q",
+            q: query, raw_q: query
+          ).first
+
+          if user
+            purchases = PromoUsage.where(user_id: user.id).count
+            referrals = User.where(pending_referrer_id: user.id).count
+
+            bot.api.send_message(
+              chat_id: user.telegram_id,
+              text: <<~TEXT,
+                👤 *Профиль пользователя*
+
+                🆔 Telegram ID: `#{user.telegram_id}`
+                🙍‍♂️ Имя: #{user.first_name || '-'}
+                🙍‍♀️ Фамилия: #{user.last_name || '-'}
+                🧑‍💻 Username: @#{user.username || '-'}
+                💰 Баланс: #{user.balance || 0} монет
+                🧮 Счет: #{user.score || 0}
+                🛍️ Покупок: #{purchases}
+                🧑‍🤝‍🧑 Рефералов: #{referrals}
+              TEXT
+              parse_mode: 'Markdown'
+            )
+          else
+            bot.api.send_message(chat_id: user.telegram_id, text: "❌ Пользователь не найден.")
+          end
           
         else
           if update.text.present? && !update.sticker && !update.animation && !update.photo && update.chat.id == CHAT_ID
