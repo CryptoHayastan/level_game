@@ -691,14 +691,14 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           end
         
         when /^\/whois (.+)/
-          query = message.text.gsub('/whois ', '').strip.downcase
+          query = update.text.gsub('/whois ', '').strip.downcase
 
           target_user = User.where(
             "LOWER(first_name) = :q OR LOWER(last_name) = :q OR LOWER(username) = :q OR telegram_id::text = :raw_q",
             q: query, raw_q: query
           ).first
 
-          if user
+          if target_user
             purchases = PromoUsage.where(user_id: target_user.id).count
             referrals = User.where(pending_referrer_id: target_user.id).count
 
