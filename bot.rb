@@ -690,11 +690,11 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
             )
           end
         
-        when %r{/LOM(\d+)}i
+        when /^\/LOM(\d+)/
           if update.reply_to_message
             chat_id = update.chat.id
             target_user_id = update.reply_to_message.from.id
-            points = message.text.match(/\/LOM(\d+)/i)[1].to_i
+            points = update.text.gsub('/LOM', '').strip.to_i
 
             if user&.role == 'superadmin'
               target_user = User.find_by(telegram_id: target_user_id)
@@ -703,7 +703,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
                 target_user.increment!(:balance, points)
                 target_user.increment!(:score, points)
                 bot.api.send_message(
-                  chat_id: chat_id,
+                  chat_id: CHAT_ID,
                   text: "✅ #{safe_telegram_name(target_user)}-ը ստացավ 💵 +#{points}LOM."
                 )
               else
