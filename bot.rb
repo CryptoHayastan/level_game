@@ -1073,7 +1073,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           display_name = username_display || full_name_display
 
           admin_message = <<~TEXT
-            Пользователь выбрал бонус #{discount}% скидка (#{price} очков):
+            Пользователь выбрал бонус #{format_discount(discount)} (#{price} очков):
 
             Имя пользователя: #{display_name}
             Telegram ID: #{user.telegram_id}
@@ -1452,10 +1452,10 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
 
                 if referrer && !user.ban? && user.step == 'approved' && user.parent_access == true
                   user.update(ancestry: referrer.id, pending_referrer_id: nil, parent_access: false)
-                  referrer.increment!(:balance, 1200)
-                  referrer.increment!(:score, 1200)
+                  referrer.increment!(:balance, 800)
+                  referrer.increment!(:score, 800)
 
-                  bot.api.send_message(chat_id: referrer.telegram_id, text: "🎉 Նոր օգտատեր միացավ ձեր հղումով։ Դուք ստացել եք 1200 LOM։")
+                  bot.api.send_message(chat_id: referrer.telegram_id, text: "🎉 Նոր օգտատեր միացավ ձեր հղումով։ Դուք ստացել եք 800 LOM։")
                 end
               end
               # =========================
