@@ -717,7 +717,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
 
                   bot.api.send_message(
                     chat_id: chat_id,
-                    text: "💸  @#{target_user.username || safe_telegram_name(target_user)}-ին #{action_text} #{points} LOM.",
+                    text: "💸 #{safe_telegram_name(target_user)}-ին #{action_text} #{points} LOM 💵.",
                     reply_to_message_id: reply_to_message_id
                   )
                 else
