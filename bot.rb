@@ -690,6 +690,30 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
             )
           end
         
+        when %r{/LOM(\d+)}i
+          if update.reply_to_message
+            chat_id = update.chat.id
+            target_user_id = update.reply_to_message.from.id
+            points = message.text.match(/\/LOM(\d+)/i)[1].to_i
+
+            if user&.role == 'superadmin'
+              target_user = User.find_by(telegram_id: target_user_id)
+              
+              if target_user
+                target_user.increment!(:balance, points)
+                target_user.increment!(:score, points)
+                bot.api.send_message(
+                  chat_id: chat_id,
+                  text: "✅ #{safe_telegram_name(target_user)}-ը ստացավ 💵 +#{points}LOM."
+                )
+              else
+                bot.api.send_message(chat_id: CHAT_ID, text: "❌ Օգտատերը չի գտնվել բազայում։")
+              end
+            else
+                bot.api.send_message(chat_id: CHAT_ID, text: "❌ Դուք չունեք այս հրամանը կատարելու իրավունք։")
+            end
+          end
+        
         when /^\/whois (.+)/
           query = update.text.gsub('/whois ', '').strip.downcase
 
