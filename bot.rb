@@ -690,27 +690,50 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
             )
           end
         
-        when /^\/LOM(\d+)/
+        when /^[+-]\d+LOM$/i
           if update.reply_to_message
             chat_id = update.chat.id
+            reply_to_message_id = update.reply_to_message.message_id
             target_user_id = update.reply_to_message.from.id
-            points = update.text.gsub('/LOM', '').strip.to_i
+            command = text.strip.upcase
 
-            if user&.role == 'superadmin'
-              target_user = User.find_by(telegram_id: target_user_id)
-              
-              if target_user
-                target_user.increment!(:balance, points)
-                target_user.increment!(:score, points)
-                bot.api.send_message(
-                  chat_id: CHAT_ID,
-                  text: "✅ #{safe_telegram_name(target_user)}-ը ստացավ 💵 +#{points}LOM."
-                )
+            if match = command.match(/^([+-])(\d+)LOM$/)
+              sign = match[1]
+              points = match[2].to_i
+
+              if user&.role == 'superadmin'
+                target_user = User.find_by(telegram_id: target_user_id)
+
+                if target_user
+                  if sign == '+'
+                    target_user.increment!(:balance, points)
+                    target_user.increment!(:score, points)
+                    action_text = "ավելացվել է"
+                  elsif sign == '-'
+                    target_user.decrement!(:balance, points)
+                    target_user.decrement!(:score, points)
+                    action_text = "հանվել է"
+                  end
+
+                  bot.api.send_message(
+                    chat_id: chat_id,
+                    text: "💸  @#{target_user.username || safe_telegram_name(target_user)}-ին #{action_text} #{points} LOM.",
+                    reply_to_message_id: reply_to_message_id
+                  )
+                else
+                    bot.api.send_message(
+                    chat_id: chat_id,
+                    text: "❌ Օգտատերը բազայում չի գտնվել։",
+                    reply_to_message_id: reply_to_message_id
+                    )
+                end
               else
-                bot.api.send_message(chat_id: CHAT_ID, text: "❌ Օգտատերը չի գտնվել բազայում։")
+                bot.api.send_message(
+                  chat_id: chat_id,
+                  text: "❌ Դուք չունեք այս հրամանը կատարելու իրավունք։",
+                  reply_to_message_id: reply_to_message_id
+                )
               end
-            else
-                bot.api.send_message(chat_id: CHAT_ID, text: "❌ Դուք չունեք այս հրամանը կատարելու իրավունք։")
             end
           end
         
