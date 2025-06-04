@@ -730,8 +730,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
               else
                 bot.api.send_message(
                   chat_id: chat_id,
-                  text: "❌ Դուք չունեք այս հրամանը կատարելու իրավունք։",
-                  reply_to_message_id: reply_to_message_id
+                  text: "❌ Դուք չունեք այս հրամանը կատարելու իրավունք։"
                 )
               end
             end
