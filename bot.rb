@@ -428,8 +428,6 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
     begin
       user = find_or_update_user(update)
 
-      admin_user?(bot, CHAT_ID, user.telegram_id)
-
       steps(user, update, bot)
       
       case update
@@ -627,6 +625,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           user.update(step: nil)
           bot.api.send_message(chat_id: user.telegram_id, text: "🚫 Действие отменено.")
         when '/ban'
+          admin_user?(bot, CHAT_ID, user.telegram_id)
           if update.reply_to_message
             chat_id = update.chat.id
 
