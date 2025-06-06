@@ -649,20 +649,18 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
             end_of_day = Time.current.end_of_day
 
             stats = Shop.all.map do |shop|
-              promo_codes = shop.promo_codes
-              usages_today = PromoUsage
-                              .where(promo_code: promo_codes)
-                              .where(created_at: start_of_day..end_of_day)
-                              .count
+              promo_codes_today = shop.promo_codes
+                                      .where(created_at: start_of_day..end_of_day)
+                                      .count
 
-              "🛍️ #{shop.name}: #{usages_today} վաճառք"
+              "🛍️ #{shop.name}: #{promo_codes_today} ստեղծված պրոմոկոդ"
             end
 
-            message = stats.any? ? stats.join("\n") : "Այսօր վաճառքներ չկան։"
+            message = stats.any? ? stats.join("\n") : "Այսօր ստեղծված պրոմոկոդներ չկան։"
 
             bot.api.send_message(
-              chat_id: update.chat.id,
-              text: "📊 Այսօրվա վաճառքները\n\n#{message}"
+              chat_id: user.telegram_id,
+              text: "📊 Այսօրվա ստեղծված պրոմոկոդները\n\n#{message}"
             )
           end
 
@@ -672,20 +670,18 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
             end_of_day = Time.current.end_of_day
 
             stats = Shop.all.map do |shop|
-              promo_codes = shop.promo_codes
-              usages_week = PromoUsage
-                              .where(promo_code: promo_codes)
-                              .where(created_at: start_of_week..end_of_day)
-                              .count
+              promo_codes_week = shop.promo_codes
+                                    .where(created_at: start_of_week..end_of_day)
+                                    .count
 
-              "🛍️ #{shop.name}: #{usages_week} վաճառք"
+              "🛍️ #{shop.name}: #{promo_codes_week} ստեղծված պրոմոկոդ"
             end
 
-            message = stats.any? ? stats.join("\n") : "Այս շաբաթ վաճառքներ չկան։"
+            message = stats.any? ? stats.join("\n") : "Այս շաբաթ ստեղծված պրոմոկոդներ չկան։"
 
             bot.api.send_message(
               chat_id: update.chat.id,
-              text: "📊 Շաբաթական վաճառքներ (վերջին 7 օր)\n\n#{message}"
+              text: "📊 Շաբաթական ստեղծված պրոմոկոդներ (վերջին 7 օր)\n\n#{message}"
             )
           end
         
