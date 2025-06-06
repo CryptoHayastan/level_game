@@ -653,14 +653,14 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
                                       .where(created_at: start_of_day..end_of_day)
                                       .count
 
-              "🛍️ #{shop.name}: #{promo_codes_today} ստեղծված պրոմոկոդ"
+              "🛍️ #{shop.name}: #{promo_codes_today} վաճառք"
             end
 
             message = stats.any? ? stats.join("\n") : "Այսօր ստեղծված պրոմոկոդներ չկան։"
 
             bot.api.send_message(
               chat_id: user.telegram_id,
-              text: "📊 Այսօրվա ստեղծված պրոմոկոդները\n\n#{message}"
+              text: "📊 Այսօրվա վաճառքները\n\n#{message}"
             )
           end
 
@@ -674,14 +674,14 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
                                     .where(created_at: start_of_week..end_of_day)
                                     .count
 
-              "🛍️ #{shop.name}: #{promo_codes_week} ստեղծված պրոմոկոդ"
+              "🛍️ #{shop.name}: #{promo_codes_week} վաճառք"
             end
 
             message = stats.any? ? stats.join("\n") : "Այս շաբաթ ստեղծված պրոմոկոդներ չկան։"
 
             bot.api.send_message(
               chat_id: update.chat.id,
-              text: "📊 Շաբաթական ստեղծված պրոմոկոդներ (վերջին 7 օր)\n\n#{message}"
+              text: "📊 Շաբաթական վաճառքները (վերջին 7 օր)\n\n#{message}"
             )
           end
         
