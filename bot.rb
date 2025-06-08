@@ -1232,7 +1232,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
               text = "🛍 Промокоды за #{period == 'day' ? 'день' : 'неделю'}:\n\n"
               promos.each do |promo|
                 product_name = product_names[promo.product_type] || "Неизвестно"
-                text += "🔸 #{promo.code} | #{product_name}\n🕒 #{promo.created_at.strftime('%d.%m %H:%M')}\n\n"
+                text += "🔸 #{promo.code} | #{product_name}\n🕒 #{promo.created_at.in_time_zone('Asia/Yerevan').strftime('%d.%m %H:%M')}\n\n"
               end
             else
               text = "⚠️ За выбранный период промокоды не найдены."
