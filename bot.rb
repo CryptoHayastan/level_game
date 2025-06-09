@@ -734,9 +734,9 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
         when /^\/whois (.+)/
           query = update.text.gsub('/whois ', '').strip.downcase
 
-          User.where(
-            "LOWER(first_name) ILIKE :q OR LOWER(last_name) ILIKE :q OR LOWER(username) ILIKE :q OR CAST(telegram_id AS TEXT) = :raw_q",
-            q: "%#{query}%", raw_q: query
+          target_user = User.where(
+            "LOWER(first_name) = :q OR LOWER(last_name) = :q OR LOWER(username) = :q OR CAST(telegram_id AS TEXT) = :raw_q",
+            q: query, raw_q: query
           ).first
 
           if target_user
