@@ -751,14 +751,15 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
               callback_data: "show_children:#{target_user.id}"
             )
 
+            buttons << Telegram::Bot::Types::InlineKeyboardButton.new(
+              text: "⚙️ Изменить роль",
+              callback_data: "select_role:#{target_user.id}"
+            )
+            
             if target_user.parent
               buttons << Telegram::Bot::Types::InlineKeyboardButton.new(
                 text: "👨‍👩‍👦 Родитель",
                 callback_data: "show_parent:#{target_user.id}"
-              )
-              buttons << Telegram::Bot::Types::InlineKeyboardButton.new(
-                text: "⚙️ Изменить роль",
-                callback_data: "select_role:#{target_user.id}"
               )
             end
 
