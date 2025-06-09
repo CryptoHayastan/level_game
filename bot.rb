@@ -734,9 +734,9 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
         when /^\/whois (.+)/
           query = update.text.gsub('/whois ', '').strip.downcase
 
-          target_user = User.where(
-            "LOWER(first_name) = :q OR LOWER(last_name) = :q OR LOWER(username) = :q OR telegram_id::text = :raw_q",
-            q: query, raw_q: query
+          User.where(
+            "LOWER(first_name) ILIKE :q OR LOWER(last_name) ILIKE :q OR LOWER(username) ILIKE :q OR CAST(telegram_id AS TEXT) = :raw_q",
+            q: "%#{query}%", raw_q: query
           ).first
 
           if target_user
@@ -755,14 +755,13 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
               text: "⚙️ Изменить роль",
               callback_data: "select_role:#{target_user.id}"
             )
-            
+
             if target_user.parent
               buttons << Telegram::Bot::Types::InlineKeyboardButton.new(
                 text: "👨‍👩‍👦 Родитель",
                 callback_data: "show_parent:#{target_user.id}"
               )
             end
-
 
             # Создаём клавиатуру
             keyboard = Telegram::Bot::Types::InlineKeyboardMarkup.new(
