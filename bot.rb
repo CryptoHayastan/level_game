@@ -864,7 +864,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
         when /^toggle_online_(\d+)$/
           shop = Shop.find_by(id: $1.to_i)
 
-          if shop && shop.user_id == user.id
+          if shop && shop.user_id == user.id && user.role == 'shop'
             if shop.online
               shop.update(online: false)
               bot.api.send_message(chat_id: user.telegram_id, text: "🔴 Магазин отключён.")
