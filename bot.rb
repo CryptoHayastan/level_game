@@ -772,6 +772,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
                 🙍‍♂️ Имя: #{target_user.first_name || '-'}
                 🙍‍♀️ Фамилия: #{target_user.last_name || '-'}
                 🧑‍💻 Username: @#{target_user.username || '-'}
+                👑 Роль: #{target_user.role}
                 💰 Баланс: #{target_user.balance || 0} монет
                 🧮 Счет: #{target_user.score || 0}
                 🛍️ Покупок: #{purchases}
