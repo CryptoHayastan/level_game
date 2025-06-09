@@ -758,6 +758,11 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
               )
             end
 
+            buttons << Telegram::Bot::Types::InlineKeyboardButton.new(
+              text: "⚙️ Изменить роль",
+              callback_data: "select_role:#{target_user.id}"
+            )
+
             # Создаём клавиатуру
             keyboard = Telegram::Bot::Types::InlineKeyboardMarkup.new(
               inline_keyboard: buttons.each_slice(2).to_a # максимум 2 кнопки в строке
@@ -1146,7 +1151,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
         when /^referrals_(\d+)$/
           user_id = $1.to_i
           target_user = User.find_by(id: user_id)
-          chat_id = update.callback_query.from.id
+          chat_id = user.telegram_id
 
           if target_user
             referrals = target_user.children
@@ -1278,6 +1283,44 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           end
 
           bot.api.send_message(chat_id: user.telegram_id, text: text, parse_mode: "Markdown")
+
+        when /^select_role:(\d+)$/
+          target_id = $1.to_i
+          roles = %w[admin user shop]
+
+          role_buttons = roles.map do |role|
+            Telegram::Bot::Types::InlineKeyboardButton.new(
+              text: role.capitalize,
+              callback_data: "set_role:#{target_id}:#{role}"
+            )
+          end
+
+          keyboard = Telegram::Bot::Types::InlineKeyboardMarkup.new(
+            inline_keyboard: role_buttons.each_slice(2).to_a
+          )
+
+          bot.api.send_message(
+            chat_id: user.telegram_id,
+            text: "Выбери новую роль для пользователя:",
+            reply_markup: keyboard
+          )
+
+        when /^set_role:(\d+):(admin|user|shop)$/
+          target_id = $1.to_i
+          new_role = $2
+
+          target_user = User.find_by(id: target_id)
+
+          if target_user
+            target_user.update(role: new_role)
+            bot.api.send_message(
+              chat_id: user.telegram_id,
+              text: "✅ Роль пользователя обновлена на: *#{new_role}*",
+              parse_mode: 'Markdown'
+            )
+          else
+            bot.api.send_message(chat_id: user.telegram_id, text: "❌ Пользователь не найден.")
+          end
 
         when 'enter_promo'
           user.update(step: 'waiting_for_promo_code')
