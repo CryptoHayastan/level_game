@@ -403,6 +403,19 @@ def format_discount(discount)
   end
 end
 
+def safe_send_message(bot, user, text:, **options)
+  return if user.ban # чтобы вообще не пытаться отправить
+
+  bot.api.send_message(chat_id: user.telegram_id, text: text, **options)
+rescue Telegram::Bot::Exceptions::ResponseError => e
+  if e.message.include?("bot was blocked by the user")
+    user.update(ban: true)
+    puts "⚠️ Пользователь #{user.telegram_id} заблокировал бота — помечен как blocked"
+  else
+    raise e
+  end
+end
+
 Telegram::Bot::Client.run(TOKEN) do |bot|
   puts "Бот запущен..."
 
@@ -439,7 +452,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           user.update(step: nil)
 
           if user.role == 'shop'
-            bot.api.send_message(chat_id: user.telegram_id, text: "👤 Դուք Հաճախորդ չեք։ Խնդրում ենք ուղարկել /my_shop հրամանը")
+            safe_send_message(bot, user, text: "👤 Դուք Հաճախորդ չեք։ Խնդրում ենք ուղարկել /my_shop հրամանը")
           else
             full_name = [user.first_name, user.last_name].compact.join(' ')
             balance = user.balance || 0
@@ -460,7 +473,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
               [Telegram::Bot::Types::InlineKeyboardButton.new(text: '💬 Մուտք գործել չաթ', url: 'https://t.me/+H3V09Qh9t701YzVh')]
             ])
 
-            bot.api.send_message(chat_id: user.telegram_id, text: info_text.strip, parse_mode: "HTML", reply_markup: kb)
+            safe_send_message(bot, user, text: info_text.strip, parse_mode: "HTML", reply_markup: kb)
           end
 
         when /^\/start (\d+)$/
