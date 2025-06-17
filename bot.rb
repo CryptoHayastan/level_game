@@ -1550,10 +1550,10 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
 
                 if referrer && referrer.id != user.id && !user.ban? && user.step == 'approved' && user&.parent_access == true
                   user.update(ancestry: referrer.id, pending_referrer_id: nil, parent_access: false)
-                  referrer.increment!(:balance, 800)
-                  referrer.increment!(:score, 800)
+                  referrer.increment!(:balance, 1200)
+                  referrer.increment!(:score, 1200)
 
-                  bot.api.send_message(chat_id: referrer.telegram_id, text: "🎉 Նոր օգտատեր միացավ ձեր հղումով։ Դուք ստացել եք 800 LOM։")
+                  bot.api.send_message(chat_id: referrer.telegram_id, text: "🎉 Նոր օգտատեր միացավ ձեր հղումով։ Դուք ստացել եք 1200 LOM։")
                 end
               end
               # =========================
