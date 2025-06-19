@@ -1368,7 +1368,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
 
               bot.api.send_message(
                 chat_id: user.telegram_id,
-                text: "👤 Владелец: @#{shop.link}\n🔢 Промокодов: #{promo_count}",
+                text: "👤 Владелец: @#{shop.link}\n ID: #{User.find(shop.user_id).telegram_id}🔢 Промокодов: #{promo_count}",
                 reply_markup: markup
               )
             end
