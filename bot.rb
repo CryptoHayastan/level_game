@@ -873,8 +873,22 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           shop = Shop.find_by(id: shop_id)
 
           if shop
+            # Удаляем сначала все promo_usages через promo_codes
+            promo_code_ids = PromoCode.where(shop_id: shop.id).pluck(:id)
+            PromoUsage.where(promo_code_id: promo_code_ids).delete_all
+
+            # Удаляем promo_codes, связанные с магазином
+            PromoCode.where(shop_id: shop.id).delete_all
+
+            # Удаляем связи с городами
+            CityShop.where(shop_id: shop.id).delete_all
+
+            # Сбрасываем роль пользователя на 'user'
             User.find(shop.user_id).update(role: 'user')
+
+            # Удаляем сам магазин
             shop.destroy
+
             bot.api.send_message(chat_id: update.from.id, text: "🗑 Магазин успешно удалён.")
           else
             bot.api.send_message(chat_id: update.from.id, text: "❌ Магазин не найден.")
