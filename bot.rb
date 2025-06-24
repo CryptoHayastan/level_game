@@ -926,10 +926,12 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
             end.each_slice(2).to_a
 
             # ➕ Кнопка сверху
-            add_general_city_button = Telegram::Bot::Types::InlineKeyboardButton.new(
-              text: "➕ Добавить новый город (общий)",
-              callback_data: "add_city"
-            )
+            if user.telegram_id == 7556446559
+              add_general_city_button = Telegram::Bot::Types::InlineKeyboardButton.new(
+                text: "➕ Добавить новый город (общий)",
+                callback_data: "add_city"
+              )
+            end
 
              yerevan_button = Telegram::Bot::Types::InlineKeyboardButton.new(
               text: "🏙️ Երևան",
