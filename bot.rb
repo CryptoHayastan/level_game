@@ -559,7 +559,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           end
 
         when '/kap'
-          excluded_links = %w[]
+          excluded_links = %w[Enigmayvn KhalifastoryYVN]
 
           shops_online = Shop.where(online: true).where.not(link: excluded_links)
           shops_offline = Shop.where(online: false).where.not(link: excluded_links)
