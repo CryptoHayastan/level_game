@@ -469,7 +469,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
             kb = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: [
               [Telegram::Bot::Types::InlineKeyboardButton.new(text: '🔤 Մուտքագրել պրոմոկոդ', callback_data: 'enter_promo')],
               [Telegram::Bot::Types::InlineKeyboardButton.new(text: '🎁 Բոնուսներ', callback_data: 'bonus')],
-              [Telegram::Bot::Types::InlineKeyboardButton.new(text: '🚀 Բուստ x2՝ 2 ժամով', callback_data: 'activate_boost')],
+              [Telegram::Bot::Types::InlineKeyboardButton.new(text: '🚀 Բուստ x2՝ 1 ժամով', callback_data: 'activate_boost')],
               [Telegram::Bot::Types::InlineKeyboardButton.new(text: '💬 Մուտք գործել չաթ', url: 'https://t.me/+H3V09Qh9t701YzVh')]
             ])
 
@@ -1519,18 +1519,18 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           if user.boost_today?
             bot.api.answer_callback_query(
               callback_query_id: update.id,
-              text: "❗️Вы уже использовали буст сегодня. Попробуйте завтра."
+              text: "❗️Դուք արդեն օգտագործել եք բուստը այսօր։ Փորձեք կրկին վաղը։"
             )
           else
             user.boosts.create!(activated_at: Time.current)
             bot.api.answer_callback_query(
               callback_query_id: update.id,
-              text: "🚀 Буст x2 активирован на 2 часа!"
+              text: "🚀 Բուստ x2 ակտիվացված է 1 ժամով։"
             )
 
             bot.api.send_message(
               chat_id: user.telegram_id,
-              text: "Ваш буст активен! В течение 2 часов ваши сообщения будут считаться x2!"
+              text: "Ձեր բուստը ակտիվացված է։ 1 ժամվա ընթացքում ձեր հաղորդագրությունները կհաշվվեն x2!"
             )
           end
         
