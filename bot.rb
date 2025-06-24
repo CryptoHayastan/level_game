@@ -822,7 +822,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
         when /^city_/
           bot.api.answer_callback_query(callback_query_id: update.id)
 
-          excluded_links = %w[]
+          excluded_links = %w[Enigmayvn KhalifastoryYVN]
 
           city_id = update.data.split('_').last.to_i
           city = City.find_by(id: city_id)
