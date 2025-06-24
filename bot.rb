@@ -912,7 +912,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
         when /^edit_cities_(\d+)$/
           shop = Shop.find_by(id: $1)
 
-          if shop && shop.user_id == user.id
+          if shop && shop.user_id == user.id && user.role == 'shop'
             all_cities = City.where(sub: [false, nil])
             attached_ids = shop.city_ids
 
@@ -950,7 +950,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           shop = Shop.find_by(id: $1)
           city = City.find_by(id: $2)
 
-          if shop && city && shop.user_id == user.id
+          if shop && city && shop.user_id == user.id && user.role == 'shop'
             if shop.cities.exists?(city.id)
               shop.cities.delete(city)
             else
@@ -1024,7 +1024,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
 
         when /^create_promo_(\d+)$/
           shop = Shop.find_by(id: $1)
-          if shop && shop.user_id == user.id
+          if shop && shop.user_id == user.id && user.role == 'shop'
             buttons = [
               ["0.5գ", 1],
               ["1գ", 2],
