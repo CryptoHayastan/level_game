@@ -697,7 +697,15 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
               text: "📊 Շաբաթական վաճառքները (վերջին 7 օր)\n\n#{message}"
             )
           end
-        
+        when '/xz'
+          message_count = MessageCount.find_by(user_id: user.id)
+
+          count = message_count&.count || 0
+
+          bot.api.send_message(
+            chat_id: CHAT_ID,
+            text: "💬 Դուք գրել եք #{count} հաղորդագրություն այս չաթում։"
+          )
         when /^[+-]\d+LOM$/i
           if update.reply_to_message
             chat_id = update.chat.id
