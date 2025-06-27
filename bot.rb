@@ -505,7 +505,6 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           purchases_count = user.promo_usages.count
 
           user_info = <<~HTML
-            👤 Անուն: #{safe_telegram_name(update.from)}
             💰 Բալանս: #{user.balance} LOM
 
             👥 Ռեֆերալներ: #{referrals_count}
@@ -516,7 +515,18 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           HTML
 
           buttons = [
-            [Telegram::Bot::Types::InlineKeyboardButton.new(text: "🎁 Ստանալ օրական բոնուսը", callback_data: "daily_bonus_#{user.telegram_id}")]
+            [
+              Telegram::Bot::Types::InlineKeyboardButton.new(
+                text: "🎁 Ստանալ օրական բոնուսը",
+                callback_data: "daily_bonus_#{user.telegram_id}"
+              )
+            ],
+            [
+              Telegram::Bot::Types::InlineKeyboardButton.new(
+                text: "🤖 Մուտք",
+                url: "https://t.me/PLANhuBot"
+              )
+            ]
           ]
 
           bot.api.send_message(
@@ -1128,7 +1138,9 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
 
             Ձեր բալանսից հանվել է #{price} LOM։
 
-            Խնդրում ենք գրել @LokiYVN և սպասել։
+            Խնդրում ենք գրել @Diktatooooor և սպասել։
+            Զեղչը վավեր է 12 ժամ։
+            <b>Հիշեք, որ բոնուսները չեն վերադարձվում և չեն փոխվում։</b>
             HTML
 
             bot.api.send_message(
