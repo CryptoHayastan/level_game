@@ -1392,6 +1392,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
                       .joins(:promo_code, :user)
                       .where(promo_codes: { shop_id: shop.id })
                       .includes(:user, :promo_code)
+                      .order(created_at: :desc)  # 💥 вот эта строка добавляет сортировку
 
             if usages.any?
               text = "🧾 Այս խանութից գնածները՝\n\n"
@@ -1403,7 +1404,9 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
                 user_name = [user.first_name, user.last_name].compact.join(' ')
                 user_display = user_name.empty? ? "@#{user.username}" : "#{user_name} (@#{user.username})"
 
-                text += "👤 #{user_display}\n🛒 Ապրանք՝ #{product_name}\n\n"
+                date = usage.created_at.strftime('%d.%m %H:%M')
+
+                text += "👤 #{user_display}\n🛒 Ապրանք՝ #{product_name}\n🕒 #{date}\n\n"
               end
             else
               text = "Այս խանութից դեռ ոչ ոք չի գնել։"
