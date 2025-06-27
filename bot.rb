@@ -1370,6 +1370,50 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
             bot.api.send_message(chat_id: user.telegram_id, text: "❌ Пользователь не найден.")
           end
 
+        when /^buyers_(\d+)$/
+          shop_id = $1.to_i
+          shop = Shop.find_by(id: shop_id)
+
+          if shop
+            product_names = {
+              1 => "0,5գ",
+              2 => "1գ",
+              3 => "1․5գ",
+              4 => "2գ",
+              5 => "2․5գ",
+              6 => "3գ",
+              7 => "3․5գ",
+              8 => "4գ",
+              9 => "4․5գ",
+              10 => "5գ"
+            }
+
+            usages = PromoUsage
+                      .joins(:promo_code, :user)
+                      .where(promo_codes: { shop_id: shop.id })
+                      .includes(:user, :promo_code)
+
+            if usages.any?
+              text = "🧾 Այս խանութից գնածները՝\n\n"
+              usages.each do |usage|
+                user = usage.user
+                promo_code = usage.promo_code
+                product_name = product_names[promo_code.product_type] || "Անհայտ"
+
+                user_name = [user.first_name, user.last_name].compact.join(' ')
+                user_display = user_name.empty? ? "@#{user.username}" : "#{user_name} (@#{user.username})"
+
+                text += "👤 #{user_display}\n🛒 Ապրանք՝ #{product_name}\n\n"
+              end
+            else
+              text = "Այս խանութից դեռ ոչ ոք չի գնել։"
+            end
+
+            bot.api.send_message(chat_id: update.from.id, text: text)
+          else
+            bot.api.send_message(chat_id: update.from.id, text: "Խանութը չի գտնվել։")
+          end
+
         when 'enter_promo'
           user.update(step: 'waiting_for_promo_code')
             bot.api.send_message(chat_id: user.telegram_id, text: 'Մուտքագրեք ձեր պրոմոկոդը:')
@@ -1396,7 +1440,8 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
                 ],
                 [
                   Telegram::Bot::Types::InlineKeyboardButton.new(text: '📅 За день', callback_data: "promos_day_#{shop.id}"),
-                  Telegram::Bot::Types::InlineKeyboardButton.new(text: '🗓 За неделю', callback_data: "promos_week_#{shop.id}")
+                  Telegram::Bot::Types::InlineKeyboardButton.new(text: '🗓 За неделю', callback_data: "promos_week_#{shop.id}"),
+  Telegram::Bot::Types::InlineKeyboardButton.new(text: '🧾 Покупатели', callback_data: "buyers_#{shop.id}")
                 ]
               ]
               markup = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: kb)
