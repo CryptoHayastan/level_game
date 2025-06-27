@@ -139,7 +139,13 @@ def collect_daily_bonus(user, bot, telegram_id, callback_query)
   buttons = [
     [Telegram::Bot::Types::InlineKeyboardButton.new(
       text: "Ստանալ օրական բոնուսը", callback_data: "daily_bonus_#{user.telegram_id}"
-    )]
+    )],
+    [
+      Telegram::Bot::Types::InlineKeyboardButton.new(
+        text: "🤖 Մուտք",
+        url: "https://t.me/PLANhuBot"
+      )
+    ]
   ]
 
   bot.api.edit_message_text(
@@ -1404,7 +1410,9 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
                 user_name = [user.first_name, user.last_name].compact.join(' ')
                 user_display = user_name.empty? ? "@#{user.username}" : "#{user_name} (@#{user.username})"
 
-                date = usage.created_at.strftime('%d.%m %H:%M')
+                # 📅 Переводим дату в армянское время (UTC+4)
+                armenian_time = usage.created_at.in_time_zone('Asia/Yerevan')
+                date = armenian_time.strftime('%d.%m %H:%M')
 
                 text += "👤 #{user_display}\n🛒 Ապրանք՝ #{product_name}\n🕒 #{date}\n\n"
               end
