@@ -865,13 +865,6 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
                       else
                         "❌ Այս քաղաքում խանութներ չկան։"
                       end
-
-          bot.api.send_message(
-            chat_id: update.from.id,
-            text: "<b>#{city.name} Քաղաքի խանութներ</b>\n\n#{shop_list}",
-            parse_mode: 'HTML'
-          )
-
           
           if city.sub
             buttons = [
@@ -1445,7 +1438,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
                 [
                   Telegram::Bot::Types::InlineKeyboardButton.new(text: '📅 За день', callback_data: "promos_day_#{shop.id}"),
                   Telegram::Bot::Types::InlineKeyboardButton.new(text: '🗓 За неделю', callback_data: "promos_week_#{shop.id}"),
-  Telegram::Bot::Types::InlineKeyboardButton.new(text: '🧾 Покупатели', callback_data: "buyers_#{shop.id}")
+                  Telegram::Bot::Types::InlineKeyboardButton.new(text: '🧾 Покупатели', callback_data: "buyers_#{shop.id}")
                 ]
               ]
               markup = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: kb)
