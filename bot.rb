@@ -1534,19 +1534,13 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
             )
           end.each_slice(2).to_a
 
-          # Кнопка "Добавить место в Ереване"
-          add_yerevan_place_button = Telegram::Bot::Types::InlineKeyboardButton.new(
-            text: "➕ Ավելացնել վայր Երևանում",
-            callback_data: "add_yerevan_place"
-          )
-
           # Кнопка "Назад"
           back_button = Telegram::Bot::Types::InlineKeyboardButton.new(
             text: "🔙 Վերադառնալ",
             callback_data: "edit_cities_#{shop.id}"
           )
 
-          keyboard = [[add_yerevan_place_button]] + buttons + [[back_button]]
+          keyboard = buttons + [[back_button]]
 
           bot.api.edit_message_text(
             chat_id: user.telegram_id,
