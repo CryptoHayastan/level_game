@@ -500,48 +500,48 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
             end
 
         when '/profile'
-          # bonus_day = user.daily_bonus&.bonus_day.to_i
-          # bonus_day = 0 if bonus_day > 10
-          # days_left = 10 - bonus_day
+          bonus_day = user.daily_bonus&.bonus_day.to_i
+          bonus_day = 0 if bonus_day > 10
+          days_left = 10 - bonus_day
   
-          # link = user.referral_link
-          # progress = ("🟩" * bonus_day) + ("⬜" * (10 - bonus_day))
+          link = user.referral_link
+          progress = ("🟩" * bonus_day) + ("⬜" * (10 - bonus_day))
   
-          # referrals_count = user.children.count
-          # purchases_count = user.promo_usages.count
+          referrals_count = user.children.count
+          purchases_count = user.promo_usages.count
 
-          # user_info = <<~HTML
-          #   💰 Բալանս: #{user.balance} LOM
+          user_info = <<~HTML
+            💰 Բալանս: #{user.balance} LOM
 
-          #   👥 Ռեֆերալներ: #{referrals_count}
-          #   🛒 Գնումներ: #{purchases_count}
+            👥 Ռեֆերալներ: #{referrals_count}
+            🛒 Գնումներ: #{purchases_count}
 
-          #   📅 Բոնուս: Օր #{bonus_day} - 10-ից
-          #   #{progress}
-          # HTML
+            📅 Բոնուս: Օր #{bonus_day} - 10-ից
+            #{progress}
+          HTML
 
-          # buttons = [
-          #   [
-          #     Telegram::Bot::Types::InlineKeyboardButton.new(
-          #       text: "🎁 Ստանալ օրական բոնուսը",
-          #       callback_data: "daily_bonus_#{user.telegram_id}"
-          #     )
-          #   ],
-          #   [
-          #     Telegram::Bot::Types::InlineKeyboardButton.new(
-          #       text: "🤖 Մուտք",
-          #       url: "https://t.me/PLANhuBot"
-          #     )
-          #   ]
-          # ]
+          buttons = [
+            [
+              Telegram::Bot::Types::InlineKeyboardButton.new(
+                text: "🎁 Ստանալ օրական բոնուսը",
+                callback_data: "daily_bonus_#{user.telegram_id}"
+              )
+            ],
+            [
+              Telegram::Bot::Types::InlineKeyboardButton.new(
+                text: "🤖 Մուտք",
+                url: "https://t.me/PLANhuBot"
+              )
+            ]
+          ]
 
-          # bot.api.send_message(
-          #   chat_id: update.chat.id,
-          #   reply_to_message_id: update.message_id,
-          #   text: user_info,
-          #   parse_mode: "HTML",
-          #   reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: buttons)
-          # )
+          bot.api.send_message(
+            chat_id: update.chat.id,
+            reply_to_message_id: update.message_id,
+            text: user_info,
+            parse_mode: "HTML",
+            reply_markup: Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: buttons)
+          )
 
         when '/my_shop'
           if user.role == 'shop'
