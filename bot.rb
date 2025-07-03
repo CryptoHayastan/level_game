@@ -126,7 +126,6 @@ def collect_daily_bonus(user, bot, telegram_id, callback_query)
   purchases_count = user.promo_usages.count
 
   user_info = <<~HTML
-    Անուն: #{safe_telegram_name(callback_query.from)}
     Բալանս: #{user.balance} LOM
     
     👥 Ռեֆերալներ: #{referrals_count}
