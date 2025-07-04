@@ -810,6 +810,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
                 👤 *Профиль пользователя*
 
                 🆔 Telegram ID: `#{target_user.telegram_id}`
+                User ID: #{target_user.id}
                 🙍‍♂️ Имя: #{target_user.first_name || '-'}
                 🙍‍♀️ Фамилия: #{target_user.last_name || '-'}
                 🧑‍💻 Username: @#{target_user.username || '-'}
