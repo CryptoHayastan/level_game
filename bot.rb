@@ -292,6 +292,7 @@ def steps(user, update, bot)
       else
         # Соответствие баллов типу продукта
         points_by_type = {
+          0 => 1500,      # Չենջ
           1 => 3000,   # 0․5գ
           2 => 5500,   # 1գ
           3 => 7500,   # 1․5գ
@@ -341,6 +342,62 @@ def create_promo_code(bot, user, shop_id, product_type_str)
       8 => "4գ",
       9 => "4․5գ",
       10 => "5գ"
+    }
+
+    product_name = product_names[product_type] || "Անհայտ"
+
+    promo_code = "#{shop_id}:#{product_type}:#{SecureRandom.hex(8)}"
+
+    begin
+      expires_at = 2.hours.from_now
+      promo = PromoCode.create!(
+        code: promo_code,
+        shop_id: shop_id,
+        product_type: product_type,
+        expires_at: expires_at
+      )
+    rescue => e
+      puts "🔥 Ошибка: #{e.message}"
+      puts e.backtrace.join("\n")
+      bot.api.send_message(
+        chat_id: user.telegram_id,
+        text: "❌ Սխալ տեղի ունեցավ։"
+      )
+      return
+    end
+
+    if promo.persisted?
+      message = <<~TEXT
+        🔤 Կոդ՝ `#{promo_code}`
+        ⏳ Վավեր է՝ 2 ժամ
+        🎯 Տեսակ՝ #{product_name}
+
+        📥 Ինչպես օգտագործել․
+        1. Բացիր բոտը 👉 [@PLANhuBot](https://t.me/PLANhuBot)
+        2. Սեղմիր **«Start»** կամ ուղարկիր հրամանը `/start`
+        3. Մուտքագրիր քո կոդը՝ `#{promo_code}`
+        4. Ստացիր բոնուսներ կամ հատուկ առաջարկներ 🎁
+
+        ⏰ Ուշադրություն․ Կոդը հասանելի է միայն 2 ժամ։ Մի ուշացիր օգտագործել։
+      TEXT
+
+      bot.api.send_message(
+        chat_id: user.telegram_id,
+        text: message,
+        parse_mode: 'Markdown'
+      )
+    else
+      bot.api.send_message(
+        chat_id: user.telegram_id,
+        text: "❌ Սխալ ստեղծման ժամանակ։"
+      )
+    end
+  
+  elsif user.role == 'superadmin' || user.role == 'admin'
+    product_type = product_type_str.to_i
+
+    product_names = {
+      0 => "Չենջ"
     }
 
     product_name = product_names[product_type] || "Անհայտ"
@@ -574,7 +631,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           end
 
         when '/kap'
-          excluded_links = %w[Enigmayvn KhalifastoryYVN HighKap PABLO_COM Rick_Yerevan OperatorElina]
+          excluded_links = %w[Enigmayvn KhalifastoryYVN HighKap Rick_Yerevan OperatorElina Diktatooooor]
 
           shops_online = Shop.where(online: true).where.not(link: excluded_links)
           shops_offline = Shop.where(online: false).where.not(link: excluded_links)
@@ -637,7 +694,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
 
           bot.api.send_message(chat_id: CHAT_ID, text: message)
 
-        when '/admin'
+        when '/superadmin'
           if user.role == 'superadmin'
             kb = [
               [Telegram::Bot::Types::InlineKeyboardButton.new(text: '📋 Все магазины', callback_data: 'list_shops')],
@@ -721,6 +778,20 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
             chat_id: CHAT_ID,
             text: "💬 Դուք գրել եք #{count} հաղորդագրություն այս չաթում։"
           )
+
+        when '/admin'
+          if user.role == 'superadmin' || user.role == 'admin'
+            keyboard = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: [
+              [Telegram::Bot::Types::InlineKeyboardButton.new(text: "📦 Ստեղծել պրոմոկոդ", callback_data: "admin_create_promo_code")]
+            ])
+
+            bot.api.send_message(
+              chat_id: user.telegram_id,
+              text: "Բարի գալուստ ադմին մենյու 👑",
+              reply_markup: keyboard
+            )
+          end
+
         when /^[+-]\d+LOM$/i
           if update.reply_to_message
             chat_id = update.chat.id
@@ -846,7 +917,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
         when /^city_/
           bot.api.answer_callback_query(callback_query_id: update.id)
 
-          excluded_links = %w[Enigmayvn KhalifastoryYVN HighKap PABLO_COM Rick_Yerevan OperatorElina]
+          excluded_links = %w[Enigmayvn KhalifastoryYVN HighKap Rick_Yerevan OperatorElina Diktatooooor]
 
           city_id = update.data.split('_').last.to_i
           city = City.find_by(id: city_id)
@@ -1416,6 +1487,9 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           user.update(step: 'waiting_for_promo_code')
             bot.api.send_message(chat_id: user.telegram_id, text: 'Մուտքագրեք ձեր պրոմոկոդը:')
           bot.api.answer_callback_query(callback_query_id: update.id) # убираем часики у кнопки
+        
+        when 'admin_create_promo_code'
+          create_admin_promo_code(bot, user, 33, 0)
 
         when 'add_city'
           user.update(step: 'awaiting_new_city_name')
