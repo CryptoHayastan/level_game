@@ -564,13 +564,15 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           progress = ("🟩" * bonus_day) + ("⬜" * (10 - bonus_day))
   
           referrals_count = user.children.count
-          purchases_count = user.promo_usages.count
+          purchases_count = user.promo_usages.joins(:promo_code).where.not(promo_codes: { shop_id: 33 }).count
+          change_purchases_count = user.promo_usages.joins(:promo_code).where(promo_codes: { shop_id: 33 }).count
 
           user_info = <<~HTML
             💰 Բալանս: #{user.balance} LOM
 
             👥 Ռեֆերալներ: #{referrals_count}
             🛒 Գնումներ: #{purchases_count}
+            🔄 Չենջ: #{change_purchases_count}
 
             📅 Բոնուս: Օր #{bonus_day} - 10-ից
             #{progress}
