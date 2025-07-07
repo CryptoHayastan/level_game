@@ -1489,7 +1489,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           bot.api.answer_callback_query(callback_query_id: update.id) # убираем часики у кнопки
         
         when 'admin_create_promo_code'
-          create_admin_promo_code(bot, user, 33, 0)
+          create_promo_code(bot, user, 33, 0)
 
         when 'add_city'
           user.update(step: 'awaiting_new_city_name')
