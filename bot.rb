@@ -779,18 +779,18 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
             text: "💬 Դուք գրել եք #{count} հաղորդագրություն այս չաթում։"
           )
 
-        # when '/admin'
-        #   if user.role == 'superadmin' || user.role == 'admin'
-        #     keyboard = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: [
-        #       [Telegram::Bot::Types::InlineKeyboardButton.new(text: "📦 Ստեղծել պրոմոկոդ", callback_data: "admin_create_promo_code")]
-        #     ])
+        when '/admin'
+          if user.role == 'superadmin' || user.role == 'admin'
+            keyboard = Telegram::Bot::Types::InlineKeyboardMarkup.new(inline_keyboard: [
+              [Telegram::Bot::Types::InlineKeyboardButton.new(text: "📦 Ստեղծել պրոմոկոդ", callback_data: "admin_create_promo_code")]
+            ])
 
-        #     bot.api.send_message(
-        #       chat_id: user.telegram_id,
-        #       text: "Բարի գալուստ ադմին մենյու 👑",
-        #       reply_markup: keyboard
-        #     )
-        #   end
+            bot.api.send_message(
+              chat_id: user.telegram_id,
+              text: "Բարի գալուստ ադմին մենյու 👑",
+              reply_markup: keyboard
+            )
+          end
 
         when /^[+-]\d+LOM$/i
           if update.reply_to_message
