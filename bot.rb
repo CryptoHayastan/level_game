@@ -633,7 +633,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           end
 
         when '/kap'
-          excluded_links = %w[Enigmayvn KhalifastoryYVN HighKap Rick_Yerevan OperatorElina Diktatooooor]
+          excluded_links = %w[Enigmayvn KhalifastoryYVN HighKap Rick_Yerevan OperatorElina Diktatooooor PABL0NA]
 
           shops_online = Shop.where(online: true).where.not(link: excluded_links)
           shops_offline = Shop.where(online: false).where.not(link: excluded_links)
@@ -919,7 +919,7 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
         when /^city_/
           bot.api.answer_callback_query(callback_query_id: update.id)
 
-          excluded_links = %w[Enigmayvn KhalifastoryYVN HighKap Rick_Yerevan OperatorElina Diktatooooor]
+          excluded_links = %w[Enigmayvn KhalifastoryYVN HighKap Rick_Yerevan OperatorElina Diktatooooor PABL0NA]
 
           city_id = update.data.split('_').last.to_i
           city = City.find_by(id: city_id)
