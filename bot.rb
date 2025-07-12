@@ -861,6 +861,11 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
             )
 
             buttons << Telegram::Bot::Types::InlineKeyboardButton.new(
+              text: "🧾 Покупки",
+              callback_data: "show_purchases:#{target_user.id}"
+            )
+
+            buttons << Telegram::Bot::Types::InlineKeyboardButton.new(
               text: "⚙️ Изменить роль",
               callback_data: "select_role:#{target_user.id}"
             )
@@ -1484,6 +1489,40 @@ Telegram::Bot::Client.run(TOKEN) do |bot|
           else
             bot.api.send_message(chat_id: update.from.id, text: "Խանութը չի գտնվել։")
           end
+
+        when /^show_purchases:(\d+)$/
+          user_id = $1.to_i
+          usages = PromoUsage.where(user_id: user_id).includes(promo_code: :shop)
+
+          product_names = {
+            1 => "0,5գ",
+            2 => "1գ",
+            3 => "1․5գ",
+            4 => "2գ",
+            5 => "2․5գ",
+            6 => "3գ",
+            7 => "3․5գ",
+            8 => "4գ",
+            9 => "4․5գ",
+            10 => "5գ"
+          }
+
+          if usages.any?
+            text = "🛍️ Գնումների պատմություն:\n\n"
+
+            usages.each do |usage|
+              promo = usage.promo_code
+              shop_name = promo.shop&.name || "Անհայտ խանութ"
+              product_name = product_names[promo.product_type] || "Անհայտ տեսակ"
+              time = promo.created_at.in_time_zone('Asia/Yerevan').strftime('%d.%m %H:%M')
+
+              text += "🏬 Խանութ: #{shop_name}\n📦 Ապրանք: #{product_name}\n🕒 Գնում: #{time}\n\n"
+            end
+          else
+            text = "❌ Այս օգտատերը դեռ գնում չի կատարել։"
+          end
+
+          bot.api.send_message(chat_id: user.telegram_id, text: text)
 
         when 'enter_promo'
           user.update(step: 'waiting_for_promo_code')
