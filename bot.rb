@@ -478,6 +478,7 @@ rescue Telegram::Bot::Exceptions::ResponseError => e
   end
 end
 
+
 Telegram::Bot::Client.run(TOKEN) do |bot|
   puts "Бот запущен..."
 
